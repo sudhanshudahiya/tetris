@@ -33,6 +33,25 @@
             pointer-events: none;
         }
 
+        /* Scanline overlay for retro CRT effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            z-index: 0;
+            pointer-events: none;
+        }
+
         .game-container {
             position: relative;
             z-index: 1;
@@ -348,21 +367,11 @@
 
     <script>
         // ============================================================
-        //  BACKGROUND ANIMATION
+        //  BACKGROUND ANIMATION — Enhanced Multi-Layer System
         // ============================================================
         (function () {
             const bgCanvas = document.getElementById('bgCanvas');
             const bgCtx = bgCanvas.getContext('2d');
-
-            const BG_BLOCK = 22; // size of falling blocks in background
-            const NEON_COLORS = [
-                'rgba(0,255,255,',    // cyan
-                'rgba(180,0,255,',    // violet
-                'rgba(0,180,255,',    // blue
-                'rgba(255,0,200,',    // magenta
-                'rgba(0,255,120,',    // green
-                'rgba(255,200,0,'     // gold
-            ];
 
             // Tetromino shapes for background decoration
             const BG_SHAPES = [
@@ -375,50 +384,35 @@
                 [[0,0,1],[1,1,1]]        // L
             ];
 
-            let stars = [];
-            let fallers = [];
-            let gridLines = [];
+            const NEON_PALETTE = [
+                { r:0,   g:255, b:255 },  // cyan
+                { r:180, g:0,   b:255 },  // violet
+                { r:0,   g:140, b:255 },  // blue
+                { r:255, g:0,   b:180 },  // magenta
+                { r:0,   g:255, b:100 },  // green
+                { r:255, g:200, b:0   },  // gold
+                { r:255, g:80,  b:0   },  // orange
+            ];
 
-            function resize() {
-                bgCanvas.width = window.innerWidth;
-                bgCanvas.height = window.innerHeight;
-                buildGrid();
-            }
+            // ── Depth layers for tetrominos ──────────────────────────
+            // Layer 0: far  – small blocks, very transparent, slow
+            // Layer 1: mid  – medium blocks, semi-transparent, medium speed
+            // Layer 2: near – large blocks, more visible, fast
+            const LAYER_CONFIG = [
+                { blockSize: 10, count: 14, speedMin: 0.12, speedMax: 0.3,  alphaMin: 0.04, alphaMax: 0.09 },
+                { blockSize: 18, count: 10, speedMin: 0.28, speedMax: 0.55, alphaMin: 0.09, alphaMax: 0.16 },
+                { blockSize: 28, count:  6, speedMin: 0.55, speedMax: 0.95, alphaMin: 0.14, alphaMax: 0.24 },
+            ];
 
-            function buildGrid() {
-                gridLines = [];
-                const cols = Math.ceil(bgCanvas.width / 40);
-                const rows = Math.ceil(bgCanvas.height / 40);
-                for (let c = 0; c <= cols; c++) gridLines.push({ x: c * 40, vertical: true });
-                for (let r = 0; r <= rows; r++) gridLines.push({ y: r * 40, vertical: false });
-            }
+            // ── State ─────────────────────────────────────────────────
+            let stars = [];          // background star field
+            let shootingStars = [];  // occasional shooting stars
+            let fallerLayers = [[], [], []];
+            let nebulae = [];        // drifting color clouds
+            let auroraPhase = 0;
+            let time = 0;            // global tick counter
 
-            function spawnStar() {
-                return {
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
-                    r: Math.random() * 1.5 + 0.3,
-                    alpha: Math.random() * 0.7 + 0.1,
-                    pulse: Math.random() * Math.PI * 2,
-                    pulseSpeed: 0.008 + Math.random() * 0.015
-                };
-            }
-
-            function spawnFaller() {
-                const colorBase = NEON_COLORS[Math.floor(Math.random() * NEON_COLORS.length)];
-                const shapeIdx = Math.floor(Math.random() * BG_SHAPES.length);
-                return {
-                    shape: BG_SHAPES[shapeIdx],
-                    x: Math.random() * (bgCanvas.width - BG_BLOCK * 4),
-                    y: -BG_BLOCK * 4,
-                    speed: 0.25 + Math.random() * 0.45,
-                    colorBase,
-                    alpha: 0.12 + Math.random() * 0.18,
-                    rotation: Math.floor(Math.random() * 4),
-                    driftX: (Math.random() - 0.5) * 0.18
-                };
-            }
-
+            // ── Helper: rotate shape ──────────────────────────────────
             function rotateShape(shape, times) {
                 let s = shape;
                 for (let t = 0; t < times; t++) {
@@ -433,98 +427,391 @@
                 return s;
             }
 
-            // Init stars
-            for (let i = 0; i < 120; i++) stars.push(spawnStar());
-            // Init fallers
-            for (let i = 0; i < 12; i++) {
-                const f = spawnFaller();
-                f.y = Math.random() * bgCanvas.height; // stagger initially
-                fallers.push(f);
+            // ── Factory functions ─────────────────────────────────────
+            function mkStar() {
+                const tier = Math.random();
+                return {
+                    x: Math.random() * bgCanvas.width,
+                    y: Math.random() * bgCanvas.height,
+                    // Tier 0: distant pin-points, tier 1: mid, tier 2: close twinklers
+                    r: tier < 0.7 ? 0.4 + Math.random() * 0.6
+                     : tier < 0.93 ? 0.8 + Math.random() * 1.0
+                     :               1.4 + Math.random() * 1.6,
+                    alpha: 0.15 + Math.random() * 0.7,
+                    pulse: Math.random() * Math.PI * 2,
+                    pulseSpeed: 0.004 + Math.random() * 0.018,
+                    color: Math.random() < 0.15
+                        ? `rgba(200,160,255,` // slightly purple for variety
+                        : `rgba(200,220,255,`
+                };
             }
 
-            // Gradient time
-            let gradientAngle = 0;
+            function mkShootingStar() {
+                const angle = (-15 + Math.random() * -20) * Math.PI / 180; // downward-right streak
+                const speed = 6 + Math.random() * 10;
+                return {
+                    x:  Math.random() * bgCanvas.width * 0.8,
+                    y:  Math.random() * bgCanvas.height * 0.4,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed * -1 + Math.random() * 2,
+                    len: 60 + Math.random() * 120,
+                    alpha: 0.9,
+                    life: 1.0
+                };
+            }
 
-            function bgLoop() {
+            function mkFaller(layerIdx) {
+                const cfg = LAYER_CONFIG[layerIdx];
+                const col = NEON_PALETTE[Math.floor(Math.random() * NEON_PALETTE.length)];
+                const shapeIdx = Math.floor(Math.random() * BG_SHAPES.length);
+                return {
+                    shape: BG_SHAPES[shapeIdx],
+                    rotation: Math.floor(Math.random() * 4),
+                    x: Math.random() * (bgCanvas.width + cfg.blockSize * 4) - cfg.blockSize * 2,
+                    y: -(cfg.blockSize * 4 + Math.random() * 60),
+                    speed: cfg.speedMin + Math.random() * (cfg.speedMax - cfg.speedMin),
+                    col,
+                    alpha: cfg.alphaMin + Math.random() * (cfg.alphaMax - cfg.alphaMin),
+                    blockSize: cfg.blockSize,
+                    driftX: (Math.random() - 0.5) * 0.12,
+                    spinPhase: Math.random() * Math.PI * 2,
+                    spinSpeed: (Math.random() - 0.5) * 0.006
+                };
+            }
+
+            function mkNebula() {
+                const col = NEON_PALETTE[Math.floor(Math.random() * NEON_PALETTE.length)];
+                return {
+                    x: Math.random() * bgCanvas.width,
+                    y: Math.random() * bgCanvas.height,
+                    r: 180 + Math.random() * 280,
+                    col,
+                    alpha: 0.025 + Math.random() * 0.045,
+                    vx: (Math.random() - 0.5) * 0.08,
+                    vy: (Math.random() - 0.5) * 0.05,
+                    phase: Math.random() * Math.PI * 2,
+                    phaseSpeed: 0.002 + Math.random() * 0.003
+                };
+            }
+
+            // ── Resize / init ─────────────────────────────────────────
+            function resize() {
+                bgCanvas.width  = window.innerWidth;
+                bgCanvas.height = window.innerHeight;
+                init();
+            }
+
+            function init() {
                 const W = bgCanvas.width, H = bgCanvas.height;
-                bgCtx.clearRect(0, 0, W, H);
-
-                // --- Animated radial gradient base ---
-                gradientAngle += 0.003;
-                const cx = W * 0.5 + Math.cos(gradientAngle) * W * 0.25;
-                const cy = H * 0.5 + Math.sin(gradientAngle * 0.7) * H * 0.2;
-                const grad = bgCtx.createRadialGradient(cx, cy, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.85);
-                grad.addColorStop(0, '#1a0040');
-                grad.addColorStop(0.4, '#0a0a2a');
-                grad.addColorStop(0.8, '#000d1a');
-                grad.addColorStop(1, '#000000');
-                bgCtx.fillStyle = grad;
-                bgCtx.fillRect(0, 0, W, H);
-
-                // --- Grid lines ---
-                bgCtx.save();
-                bgCtx.strokeStyle = 'rgba(0, 180, 255, 0.04)';
-                bgCtx.lineWidth = 1;
-                gridLines.forEach(gl => {
-                    bgCtx.beginPath();
-                    if (gl.vertical) {
-                        bgCtx.moveTo(gl.x, 0);
-                        bgCtx.lineTo(gl.x, H);
-                    } else {
-                        bgCtx.moveTo(0, gl.y);
-                        bgCtx.lineTo(W, gl.y);
+                // Stars
+                stars = [];
+                const starCount = Math.min(280, Math.round(W * H / 5000));
+                for (let i = 0; i < starCount; i++) stars.push(mkStar());
+                // Fallers
+                for (let l = 0; l < 3; l++) {
+                    fallerLayers[l] = [];
+                    for (let i = 0; i < LAYER_CONFIG[l].count; i++) {
+                        const f = mkFaller(l);
+                        f.y = Math.random() * H; // stagger initial positions
+                        fallerLayers[l].push(f);
                     }
-                    bgCtx.stroke();
-                });
+                }
+                // Nebulae
+                nebulae = [];
+                for (let i = 0; i < 8; i++) nebulae.push(mkNebula());
+            }
+
+            // ── Draw helpers ──────────────────────────────────────────
+            function drawNeonBlock(bx, by, size, col, alpha) {
+                const { r, g, b } = col;
+                const innerAlpha = alpha;
+                const borderAlpha = Math.min(1, alpha + 0.3);
+
+                // Glow halo
+                bgCtx.save();
+                bgCtx.shadowColor = `rgb(${r},${g},${b})`;
+                bgCtx.shadowBlur = size * 0.8;
+                bgCtx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.3})`;
+                bgCtx.fillRect(bx, by, size - 1, size - 1);
                 bgCtx.restore();
 
-                // --- Stars ---
-                stars.forEach(s => {
-                    s.pulse += s.pulseSpeed;
-                    const a = s.alpha * (0.5 + 0.5 * Math.sin(s.pulse));
-                    bgCtx.beginPath();
-                    bgCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-                    bgCtx.fillStyle = `rgba(200,220,255,${a})`;
-                    bgCtx.fill();
-                });
+                // Main face gradient
+                const grd = bgCtx.createLinearGradient(bx, by, bx + size, by + size);
+                grd.addColorStop(0, `rgba(${r},${g},${b},${innerAlpha * 0.55})`);
+                grd.addColorStop(1, `rgba(${r},${g},${b},${innerAlpha * 0.15})`);
+                bgCtx.fillStyle = grd;
+                bgCtx.fillRect(bx + 1, by + 1, size - 2, size - 2);
 
-                // --- Falling tetromino blocks ---
-                fallers.forEach((f, idx) => {
+                // Neon border
+                bgCtx.strokeStyle = `rgba(${r},${g},${b},${borderAlpha})`;
+                bgCtx.lineWidth = size > 20 ? 1.5 : 1;
+                bgCtx.strokeRect(bx + 0.5, by + 0.5, size - 1, size - 1);
+
+                // Top-left inner highlight
+                bgCtx.fillStyle = `rgba(255,255,255,${alpha * 0.5})`;
+                const hl = Math.max(1, Math.floor(size * 0.12));
+                bgCtx.fillRect(bx + 2, by + 2, size - 6, hl);
+                bgCtx.fillRect(bx + 2, by + 2, hl, size - 6);
+            }
+
+            function drawFallerLayer(layerFallers, layerIdx) {
+                const H = bgCanvas.height;
+                const cfg = LAYER_CONFIG[layerIdx];
+
+                layerFallers.forEach((f, idx) => {
                     f.y += f.speed;
                     f.x += f.driftX;
+                    f.spinPhase += f.spinSpeed;
 
-                    const shape = rotateShape(f.shape, f.rotation);
+                    const rotation = f.rotation; // we keep rotation fixed for each piece
+                    const shape = rotateShape(f.shape, rotation);
+
                     shape.forEach((rowArr, r) => {
                         rowArr.forEach((cell, c) => {
                             if (cell) {
-                                const bx = f.x + c * BG_BLOCK;
-                                const by = f.y + r * BG_BLOCK;
-                                // Filled block
-                                bgCtx.fillStyle = f.colorBase + f.alpha + ')';
-                                bgCtx.fillRect(bx, by, BG_BLOCK - 1, BG_BLOCK - 1);
-                                // Neon border
-                                bgCtx.strokeStyle = f.colorBase + (f.alpha + 0.25) + ')';
-                                bgCtx.lineWidth = 1;
-                                bgCtx.strokeRect(bx, by, BG_BLOCK - 1, BG_BLOCK - 1);
-                                // Inner highlight
-                                bgCtx.fillStyle = f.colorBase + (f.alpha * 0.4) + ')';
-                                bgCtx.fillRect(bx + 2, by + 2, 4, 4);
+                                const bx = f.x + c * f.blockSize;
+                                const by = f.y + r * f.blockSize;
+                                drawNeonBlock(bx, by, f.blockSize, f.col, f.alpha);
                             }
                         });
                     });
 
-                    // Respawn when off screen
-                    if (f.y > H + BG_BLOCK * 4) {
-                        fallers[idx] = spawnFaller();
+                    if (f.y > H + f.blockSize * 5) {
+                        layerFallers[idx] = mkFaller(layerIdx);
                     }
                 });
+            }
 
-                // --- Subtle vignette overlay ---
-                const vig = bgCtx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.9);
-                vig.addColorStop(0, 'rgba(0,0,0,0)');
-                vig.addColorStop(1, 'rgba(0,0,0,0.55)');
-                bgCtx.fillStyle = vig;
-                bgCtx.fillRect(0, 0, W, H);
+            // ── Main loop ─────────────────────────────────────────────
+            function bgLoop() {
+                const W = bgCanvas.width, H = bgCanvas.height;
+                time++;
+                auroraPhase += 0.004;
+
+                bgCtx.clearRect(0, 0, W, H);
+
+                // ─ 1. Deep space base gradient ────────────────────────
+                {
+                    const t1 = time * 0.0012;
+                    const cx = W * 0.5 + Math.cos(t1) * W * 0.22;
+                    const cy = H * 0.5 + Math.sin(t1 * 0.8) * H * 0.18;
+                    const base = bgCtx.createRadialGradient(cx, cy, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.9);
+                    // Cycle slowly between cool purple and deep blue
+                    const hueShift = Math.sin(time * 0.0008) * 0.5 + 0.5; // 0–1
+                    const r0 = Math.round(10 + hueShift * 20);
+                    const g0 = Math.round(0  + hueShift * 5);
+                    const b0 = Math.round(30 + hueShift * 25);
+                    base.addColorStop(0,   `rgb(${r0+16},${g0},${b0+34})`);
+                    base.addColorStop(0.35, `rgb(${r0+3},${g0+3},${b0+18})`);
+                    base.addColorStop(0.75, `rgb(1,2,${b0+6})`);
+                    base.addColorStop(1,    '#000000');
+                    bgCtx.fillStyle = base;
+                    bgCtx.fillRect(0, 0, W, H);
+                }
+
+                // ─ 2. Nebula clouds ───────────────────────────────────
+                nebulae.forEach(n => {
+                    n.x += n.vx;
+                    n.y += n.vy;
+                    n.phase += n.phaseSpeed;
+                    // Wrap around edges
+                    if (n.x < -n.r) n.x = W + n.r;
+                    if (n.x > W + n.r) n.x = -n.r;
+                    if (n.y < -n.r) n.y = H + n.r;
+                    if (n.y > H + n.r) n.y = -n.r;
+
+                    const pulseMod = 1 + Math.sin(n.phase) * 0.12;
+                    const rr = n.r * pulseMod;
+                    const { r, g, b } = n.col;
+                    const nebGrad = bgCtx.createRadialGradient(n.x, n.y, 0, n.x, n.y, rr);
+                    nebGrad.addColorStop(0,   `rgba(${r},${g},${b},${n.alpha * 1.5})`);
+                    nebGrad.addColorStop(0.4,  `rgba(${r},${g},${b},${n.alpha})`);
+                    nebGrad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+                    bgCtx.fillStyle = nebGrad;
+                    bgCtx.fillRect(n.x - rr, n.y - rr, rr * 2, rr * 2);
+                });
+
+                // ─ 3. Aurora bands ────────────────────────────────────
+                {
+                    const auroraColors = [
+                        [0,   220, 255],
+                        [120, 0,   255],
+                        [0,   255, 140],
+                        [200, 0,   255],
+                    ];
+                    const bandCount = 4;
+                    for (let i = 0; i < bandCount; i++) {
+                        const col = auroraColors[i % auroraColors.length];
+                        const yBase = H * (0.05 + i * 0.06);
+                        const amp = 18 + Math.sin(auroraPhase * 0.7 + i * 1.2) * 12;
+                        const freq = 0.004 + i * 0.0015;
+                        const alpha = 0.03 + Math.sin(auroraPhase + i * 0.9) * 0.015;
+                        if (alpha <= 0) continue;
+
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(0, yBase);
+                        for (let x = 0; x <= W; x += 4) {
+                            const y = yBase + Math.sin(x * freq + auroraPhase + i * 1.8) * amp
+                                            + Math.sin(x * freq * 2.3 + auroraPhase * 1.4) * (amp * 0.4);
+                            bgCtx.lineTo(x, y);
+                        }
+                        bgCtx.lineTo(W, 0);
+                        bgCtx.lineTo(0, 0);
+                        bgCtx.closePath();
+                        bgCtx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${Math.abs(alpha)})`;
+                        bgCtx.fill();
+                    }
+                    // Mirror at bottom
+                    for (let i = 0; i < 3; i++) {
+                        const col = auroraColors[(i + 1) % auroraColors.length];
+                        const yBase = H * (0.92 - i * 0.05);
+                        const amp = 14 + Math.sin(auroraPhase * 0.6 + i) * 10;
+                        const freq = 0.003 + i * 0.002;
+                        const alpha = 0.025 + Math.sin(auroraPhase * 1.1 + i) * 0.012;
+                        if (alpha <= 0) continue;
+
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(0, yBase);
+                        for (let x = 0; x <= W; x += 4) {
+                            const y = yBase - Math.sin(x * freq + auroraPhase * 1.1 + i * 2) * amp;
+                            bgCtx.lineTo(x, y);
+                        }
+                        bgCtx.lineTo(W, H);
+                        bgCtx.lineTo(0, H);
+                        bgCtx.closePath();
+                        bgCtx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${Math.abs(alpha)})`;
+                        bgCtx.fill();
+                    }
+                }
+
+                // ─ 4. Perspective grid ────────────────────────────────
+                {
+                    const horizonY = H * 0.48;
+                    const vpX = W * 0.5;
+                    const gridAlpha = 0.045;
+
+                    bgCtx.save();
+                    bgCtx.strokeStyle = `rgba(0,200,255,${gridAlpha})`;
+                    bgCtx.lineWidth = 0.8;
+
+                    // Vertical "converging" lines
+                    const vLines = 22;
+                    for (let i = 0; i <= vLines; i++) {
+                        const bx = (i / vLines) * W;
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(vpX, horizonY);
+                        bgCtx.lineTo(bx, H);
+                        bgCtx.stroke();
+                    }
+
+                    // Horizontal rows (exponential spacing for perspective)
+                    const hRows = 12;
+                    for (let r = 1; r <= hRows; r++) {
+                        const t = Math.pow(r / hRows, 1.8);
+                        const y = horizonY + (H - horizonY) * t;
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(0, y);
+                        bgCtx.lineTo(W, y);
+                        bgCtx.stroke();
+                    }
+
+                    // Flat grid above horizon (standard lines)
+                    bgCtx.strokeStyle = `rgba(0,180,255,${gridAlpha * 0.5})`;
+                    bgCtx.lineWidth = 0.5;
+                    const cellW = 44;
+                    const cellH = 44;
+                    for (let x = 0; x < W; x += cellW) {
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(x, 0);
+                        bgCtx.lineTo(x, horizonY);
+                        bgCtx.stroke();
+                    }
+                    for (let y = 0; y < horizonY; y += cellH) {
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(0, y);
+                        bgCtx.lineTo(W, y);
+                        bgCtx.stroke();
+                    }
+
+                    bgCtx.restore();
+                }
+
+                // ─ 5. Star field ──────────────────────────────────────
+                stars.forEach(s => {
+                    s.pulse += s.pulseSpeed;
+                    const a = s.alpha * (0.45 + 0.55 * Math.sin(s.pulse));
+                    // Cross flare for larger stars
+                    if (s.r > 1.2) {
+                        bgCtx.save();
+                        bgCtx.strokeStyle = `${s.color}${a * 0.5})`;
+                        bgCtx.lineWidth = 0.7;
+                        const flare = s.r * 2.5;
+                        bgCtx.beginPath(); bgCtx.moveTo(s.x - flare, s.y); bgCtx.lineTo(s.x + flare, s.y); bgCtx.stroke();
+                        bgCtx.beginPath(); bgCtx.moveTo(s.x, s.y - flare); bgCtx.lineTo(s.x, s.y + flare); bgCtx.stroke();
+                        bgCtx.restore();
+                    }
+                    bgCtx.beginPath();
+                    bgCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    bgCtx.fillStyle = `${s.color}${a})`;
+                    bgCtx.fill();
+                });
+
+                // ─ 6. Shooting stars ──────────────────────────────────
+                // Spawn occasionally
+                if (Math.random() < 0.004 && shootingStars.length < 3) {
+                    shootingStars.push(mkShootingStar());
+                }
+                for (let i = shootingStars.length - 1; i >= 0; i--) {
+                    const ss = shootingStars[i];
+                    ss.x += ss.vx;
+                    ss.y += ss.vy;
+                    ss.life -= 0.018;
+                    if (ss.life <= 0 || ss.x > bgCanvas.width + 50 || ss.y > bgCanvas.height + 50) {
+                        shootingStars.splice(i, 1);
+                        continue;
+                    }
+                    const tail = ss.len * ss.life;
+                    const grad = bgCtx.createLinearGradient(ss.x, ss.y, ss.x - ss.vx * (tail / ss.vx || 1), ss.y - ss.vy * (tail / ss.vx || 1));
+                    grad.addColorStop(0, `rgba(255,255,255,${ss.life * 0.9})`);
+                    grad.addColorStop(0.3, `rgba(150,200,255,${ss.life * 0.5})`);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    bgCtx.save();
+                    bgCtx.strokeStyle = grad;
+                    bgCtx.lineWidth = 1.5;
+                    bgCtx.beginPath();
+                    const dx = ss.vx / Math.hypot(ss.vx, ss.vy);
+                    const dy = ss.vy / Math.hypot(ss.vx, ss.vy);
+                    bgCtx.moveTo(ss.x, ss.y);
+                    bgCtx.lineTo(ss.x - dx * tail, ss.y - dy * tail);
+                    bgCtx.stroke();
+                    bgCtx.restore();
+                }
+
+                // ─ 7. Far layer (smallest, most transparent) ─────────
+                drawFallerLayer(fallerLayers[0], 0);
+
+                // ─ 8. Mid layer ───────────────────────────────────────
+                drawFallerLayer(fallerLayers[1], 1);
+
+                // ─ 9. Near layer (largest, most visible) ─────────────
+                drawFallerLayer(fallerLayers[2], 2);
+
+                // ─ 10. Vignette + edge glow ───────────────────────────
+                {
+                    const vig = bgCtx.createRadialGradient(W/2, H/2, H * 0.25, W/2, H/2, H * 0.92);
+                    vig.addColorStop(0, 'rgba(0,0,0,0)');
+                    vig.addColorStop(1, 'rgba(0,0,0,0.68)');
+                    bgCtx.fillStyle = vig;
+                    bgCtx.fillRect(0, 0, W, H);
+
+                    // Subtle edge color bleed
+                    const edgeGlow = bgCtx.createLinearGradient(0, 0, 0, H);
+                    edgeGlow.addColorStop(0,   'rgba(0,80,200,0.06)');
+                    edgeGlow.addColorStop(0.5, 'rgba(0,0,0,0)');
+                    edgeGlow.addColorStop(1,   'rgba(80,0,200,0.06)');
+                    bgCtx.fillStyle = edgeGlow;
+                    bgCtx.fillRect(0, 0, W, H);
+                }
 
                 requestAnimationFrame(bgLoop);
             }
