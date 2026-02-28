@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tetris Game</title>
     <style>
+        /* Atari-style pixel font via CSS */
+        @font-face {
+            font-family: 'AtariPixel';
+            src: local('Courier New'), local('monospace');
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,134 +18,222 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', 'Lucida Console', monospace;
+            background: #0a0a0a;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            color: white;
+            color: #e0e0e0;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+
+        /* Atari background canvas - falling Tetris pieces */
+        #atariBackground {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* CRT scanline overlay */
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.15) 0px,
+                rgba(0, 0, 0, 0.15) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+        }
+
+        /* CRT screen curvature vignette */
+        .crt-vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: none;
+            background: radial-gradient(
+                ellipse at center,
+                transparent 60%,
+                rgba(0, 0, 0, 0.4) 100%
+            );
+        }
+
+        /* Phosphor glow flicker animation */
+        @keyframes crt-flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 1; }
+            10% { opacity: 0.98; }
+            15% { opacity: 1; }
+            50% { opacity: 0.99; }
+            80% { opacity: 1; }
+            100% { opacity: 0.98; }
         }
 
         .game-container {
             display: flex;
-            gap: 30px;
+            gap: 20px;
             align-items: flex-start;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 16px;
+            border: 3px solid #444;
+            box-shadow:
+                0 0 20px rgba(0, 255, 0, 0.1),
+                inset 0 0 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 3;
+            animation: crt-flicker 4s infinite;
         }
 
         .game-board {
             width: 300px;
             height: 600px;
             background: #000;
-            border: 3px solid #333;
-            border-radius: 8px;
+            border: 3px solid #555;
             position: relative;
             overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
         }
 
-        canvas {
+        canvas#gameCanvas {
             display: block;
             background: #000;
-            border-radius: 5px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
         }
 
         .game-info {
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            min-width: 200px;
+            gap: 16px;
+            min-width: 180px;
         }
 
         .score-panel {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
+            background: #111;
+            padding: 12px;
+            border: 2px solid #555;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
         }
 
         .score-panel h3 {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-align: center;
-            color: #ffd700;
+            color: #ff6600;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 8px rgba(255, 102, 0, 0.5);
         }
 
         .score-item {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
+            margin: 4px 0;
             font-size: 14px;
+            color: #aaa;
+            font-family: 'Courier New', monospace;
+        }
+
+        .score-item span:last-child {
+            color: #0f0;
+            text-shadow: 0 0 4px rgba(0, 255, 0, 0.3);
         }
 
         .controls {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
+            background: #111;
+            padding: 12px;
+            border: 2px solid #555;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
         }
 
         .controls h3 {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             text-align: center;
-            color: #ffd700;
+            color: #ff6600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 8px rgba(255, 102, 0, 0.5);
         }
 
         .control-item {
-            margin: 5px 0;
-            font-size: 12px;
+            margin: 4px 0;
+            font-size: 11px;
+            color: #888;
+            font-family: 'Courier New', monospace;
         }
 
         .buttons {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
 
         .game-btn {
-            padding: 12px 20px;
-            font-size: 16px;
+            padding: 10px 16px;
+            font-size: 14px;
             font-weight: bold;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.1s ease;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+            font-family: 'Courier New', monospace;
+            background: #111;
+            image-rendering: pixelated;
         }
 
         .start-btn {
-            background: linear-gradient(45deg, #4CAF50, #45a049);
-            color: white;
+            color: #0f0;
+            border-color: #0f0;
+            text-shadow: 0 0 6px rgba(0, 255, 0, 0.4);
         }
 
         .start-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            background: #0f0;
+            color: #000;
+            box-shadow: 0 0 12px rgba(0, 255, 0, 0.5);
         }
 
         .restart-btn {
-            background: linear-gradient(45deg, #f44336, #d32f2f);
-            color: white;
+            color: #f33;
+            border-color: #f33;
+            text-shadow: 0 0 6px rgba(255, 51, 51, 0.4);
         }
 
         .restart-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            background: #f33;
+            color: #000;
+            box-shadow: 0 0 12px rgba(255, 51, 51, 0.5);
         }
 
         .pause-btn {
-            background: linear-gradient(45deg, #ff9800, #f57c00);
-            color: white;
+            color: #ff0;
+            border-color: #ff0;
+            text-shadow: 0 0 6px rgba(255, 255, 0, 0.4);
         }
 
         .pause-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            background: #ff0;
+            color: #000;
+            box-shadow: 0 0 12px rgba(255, 255, 0, 0.5);
         }
 
         .game-over {
@@ -147,30 +241,47 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            padding: 30px;
-            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 24px;
             text-align: center;
-            border: 2px solid #f44336;
+            border: 3px solid #f33;
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.4);
             display: none;
         }
 
         .game-over h2 {
-            color: #f44336;
-            margin-bottom: 15px;
-            font-size: 24px;
+            color: #f33;
+            margin-bottom: 12px;
+            font-size: 20px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px rgba(255, 51, 51, 0.6);
+            font-family: 'Courier New', monospace;
         }
 
         .game-over p {
-            margin: 10px 0;
-            font-size: 16px;
+            margin: 8px 0;
+            font-size: 14px;
+            color: #aaa;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Atari-style title glow */
+        .atari-title {
+            text-align: center;
+            font-size: 10px;
+            color: #555;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            padding: 4px 0;
+            font-family: 'Courier New', monospace;
         }
 
         @media (max-width: 768px) {
             .game-container {
                 flex-direction: column;
                 align-items: center;
-                padding: 15px;
+                padding: 12px;
             }
 
             .game-board {
@@ -191,6 +302,11 @@
     </style>
 </head>
 <body>
+    <!-- Atari-style animated background -->
+    <canvas id="atariBackground"></canvas>
+    <div class="crt-overlay"></div>
+    <div class="crt-vignette"></div>
+
     <div class="game-container">
         <div class="game-board">
             <canvas id="gameCanvas" width="300" height="600"></canvas>
@@ -236,6 +352,191 @@
     </div>
 
     <script>
+        // ========================================
+        // ATARI BACKGROUND - Falling Tetris Pieces
+        // ========================================
+        (function initAtariBackground() {
+            const bgCanvas = document.getElementById('atariBackground');
+            const bgCtx = bgCanvas.getContext('2d');
+
+            function resizeBgCanvas() {
+                bgCanvas.width = window.innerWidth;
+                bgCanvas.height = window.innerHeight;
+            }
+            resizeBgCanvas();
+            window.addEventListener('resize', resizeBgCanvas);
+
+            // Atari-era color palette (muted, CRT phosphor colors)
+            const ATARI_COLORS = [
+                '#c84848', // red
+                '#48a848', // green
+                '#4848c8', // blue
+                '#c8c848', // yellow
+                '#c86848', // orange
+                '#48c8c8', // cyan
+                '#9848c8', // purple
+            ];
+
+            // Mini Tetris piece shapes for background
+            const BG_PIECES = [
+                [[1,1,1,1]],           // I horizontal
+                [[1,1],[1,1]],          // O
+                [[0,1,0],[1,1,1]],      // T
+                [[0,1,1],[1,1,0]],      // S
+                [[1,1,0],[0,1,1]],      // Z
+                [[1,0],[1,0],[1,1]],    // J
+                [[0,1],[0,1],[1,1]],    // L
+            ];
+
+            const BG_BLOCK_SIZE = 16;
+            const fallingPieces = [];
+            const MAX_PIECES = 25;
+
+            // Stacked pieces grid (background accumulation)
+            let bgCols, bgRows;
+            let bgGrid = [];
+
+            function initBgGrid() {
+                bgCols = Math.ceil(bgCanvas.width / BG_BLOCK_SIZE);
+                bgRows = Math.ceil(bgCanvas.height / BG_BLOCK_SIZE);
+                bgGrid = [];
+                for (let r = 0; r < bgRows; r++) {
+                    bgGrid[r] = new Array(bgCols).fill(null);
+                }
+            }
+            initBgGrid();
+            window.addEventListener('resize', initBgGrid);
+
+            function spawnBgPiece() {
+                const idx = Math.floor(Math.random() * BG_PIECES.length);
+                const shape = BG_PIECES[idx];
+                const color = ATARI_COLORS[idx];
+                // Dim the color for background
+                const alpha = 0.15 + Math.random() * 0.2;
+                return {
+                    shape: shape,
+                    x: Math.floor(Math.random() * (bgCols - 4)),
+                    y: -shape.length * BG_BLOCK_SIZE,
+                    color: color,
+                    alpha: alpha,
+                    speed: 0.3 + Math.random() * 0.7,
+                };
+            }
+
+            // Initialize some pieces
+            for (let i = 0; i < MAX_PIECES; i++) {
+                const p = spawnBgPiece();
+                p.y = Math.random() * bgCanvas.height; // scatter initially
+                fallingPieces.push(p);
+            }
+
+            // Stack a piece onto the grid when it reaches bottom
+            function stackPiece(piece) {
+                const gridY = Math.floor((bgCanvas.height - piece.shape.length * BG_BLOCK_SIZE) / BG_BLOCK_SIZE);
+                const gridX = piece.x;
+                for (let r = 0; r < piece.shape.length; r++) {
+                    for (let c = 0; c < piece.shape[r].length; c++) {
+                        if (piece.shape[r][c]) {
+                            const gr = gridY + r;
+                            const gc = gridX + c;
+                            if (gr >= 0 && gr < bgRows && gc >= 0 && gc < bgCols) {
+                                bgGrid[gr][gc] = { color: piece.color, alpha: piece.alpha * 0.5 };
+                            }
+                        }
+                    }
+                }
+                // Clear full rows in background (like Tetris!)
+                for (let r = bgRows - 1; r >= 0; r--) {
+                    let full = true;
+                    for (let c = 0; c < bgCols; c++) {
+                        if (!bgGrid[r][c]) { full = false; break; }
+                    }
+                    if (full) {
+                        bgGrid.splice(r, 1);
+                        bgGrid.unshift(new Array(bgCols).fill(null));
+                    }
+                }
+            }
+
+            function drawBgBlock(x, y, color, alpha) {
+                bgCtx.globalAlpha = alpha;
+                bgCtx.fillStyle = color;
+                bgCtx.fillRect(x, y, BG_BLOCK_SIZE, BG_BLOCK_SIZE);
+                // Pixel border for retro look
+                bgCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+                bgCtx.lineWidth = 1;
+                bgCtx.strokeRect(x + 0.5, y + 0.5, BG_BLOCK_SIZE - 1, BG_BLOCK_SIZE - 1);
+                bgCtx.globalAlpha = 1;
+            }
+
+            function animateBg() {
+                // Dark fill with slight trail effect
+                bgCtx.fillStyle = 'rgba(10, 10, 10, 0.92)';
+                bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+                // Draw subtle grid lines
+                bgCtx.strokeStyle = 'rgba(40, 40, 40, 0.3)';
+                bgCtx.lineWidth = 0.5;
+                for (let x = 0; x < bgCanvas.width; x += BG_BLOCK_SIZE) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(x, 0);
+                    bgCtx.lineTo(x, bgCanvas.height);
+                    bgCtx.stroke();
+                }
+                for (let y = 0; y < bgCanvas.height; y += BG_BLOCK_SIZE) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(0, y);
+                    bgCtx.lineTo(bgCanvas.width, y);
+                    bgCtx.stroke();
+                }
+
+                // Draw stacked grid
+                for (let r = 0; r < bgRows; r++) {
+                    for (let c = 0; c < bgCols; c++) {
+                        if (bgGrid[r] && bgGrid[r][c]) {
+                            drawBgBlock(c * BG_BLOCK_SIZE, r * BG_BLOCK_SIZE,
+                                bgGrid[r][c].color, bgGrid[r][c].alpha);
+                        }
+                    }
+                }
+
+                // Update and draw falling pieces
+                for (let i = 0; i < fallingPieces.length; i++) {
+                    const p = fallingPieces[i];
+                    p.y += p.speed;
+
+                    // Draw piece
+                    for (let r = 0; r < p.shape.length; r++) {
+                        for (let c = 0; c < p.shape[r].length; c++) {
+                            if (p.shape[r][c]) {
+                                drawBgBlock(
+                                    p.x * BG_BLOCK_SIZE + c * BG_BLOCK_SIZE,
+                                    p.y + r * BG_BLOCK_SIZE,
+                                    p.color,
+                                    p.alpha
+                                );
+                            }
+                        }
+                    }
+
+                    // When piece goes off screen, respawn it
+                    if (p.y > bgCanvas.height) {
+                        stackPiece(p);
+                        const newP = spawnBgPiece();
+                        fallingPieces[i] = newP;
+                    }
+                }
+
+                requestAnimationFrame(animateBg);
+            }
+
+            animateBg();
+        })();
+
+        // ========================================
+        // TETRIS GAME
+        // ========================================
+
         // Game variables
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -307,8 +608,8 @@
             ]
         ];
 
-        // Colors for each piece type
-        const COLORS = ['#FF0000', '#FFA500', '#FFFF00', '#00FF00', '#00FFFF', '#0000FF', '#800080'];
+        // Atari-era colors for each piece type (warm CRT phosphor tones)
+        const COLORS = ['#c84848', '#c86848', '#c8c848', '#48a848', '#48c8c8', '#4848c8', '#9848c8'];
 
         // Initialize game board
         function initBoard() {
@@ -425,35 +726,66 @@
             }
         }
 
+        // Draw an Atari-style pixelated block
+        function drawAtariBlock(context, x, y, size, color) {
+            // Main block fill
+            context.fillStyle = color;
+            context.fillRect(x, y, size, size);
+
+            // Highlight edge (top-left) — brighter
+            context.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            context.fillRect(x, y, size, 2);
+            context.fillRect(x, y, 2, size);
+
+            // Shadow edge (bottom-right) — darker
+            context.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            context.fillRect(x, y + size - 2, size, 2);
+            context.fillRect(x + size - 2, y, 2, size);
+
+            // Inner pixel detail
+            context.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            context.fillRect(x + 4, y + 4, size - 8, size - 8);
+        }
+
         // Draw the game board
         function drawBoard() {
-            // Clear canvas
-            ctx.fillStyle = '#000';
+            // Clear canvas with dark background
+            ctx.fillStyle = '#0a0a0a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw placed pieces
+            // Draw subtle grid on the board
+            ctx.strokeStyle = 'rgba(40, 40, 40, 0.5)';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= BOARD_WIDTH; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * BLOCK_SIZE, 0);
+                ctx.lineTo(i * BLOCK_SIZE, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= BOARD_HEIGHT; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * BLOCK_SIZE);
+                ctx.lineTo(canvas.width, i * BLOCK_SIZE);
+                ctx.stroke();
+            }
+
+            // Draw placed pieces with Atari-style blocks
             for (let row = 0; row < BOARD_HEIGHT; row++) {
                 for (let col = 0; col < BOARD_WIDTH; col++) {
                     if (board[row][col] !== 0) {
-                        ctx.fillStyle = board[row][col];
-                        ctx.fillRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                        ctx.strokeStyle = '#333';
-                        ctx.strokeRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        drawAtariBlock(ctx, col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, board[row][col]);
                     }
                 }
             }
 
-            // Draw current piece
+            // Draw current piece with Atari-style blocks
             if (currentPiece) {
-                ctx.fillStyle = currentPiece.color;
                 for (let row = 0; row < currentPiece.shape.length; row++) {
                     for (let col = 0; col < currentPiece.shape[row].length; col++) {
                         if (currentPiece.shape[row][col] === 1) {
                             const x = (currentPiece.x + col) * BLOCK_SIZE;
                             const y = (currentPiece.y + row) * BLOCK_SIZE;
-                            ctx.fillRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
-                            ctx.strokeStyle = '#333';
-                            ctx.strokeRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+                            drawAtariBlock(ctx, x, y, BLOCK_SIZE, currentPiece.color);
                         }
                     }
                 }
