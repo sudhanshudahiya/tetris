@@ -60,17 +60,26 @@ function testTetrisRequirements() {
         // Responsive design
         { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
 
-        // Atari background features
+        // Atari background features — core
         { name: 'Atari background canvas', test: () => content.includes('atariBackground') && content.includes('id="atariBackground"') },
-        { name: 'CRT scanline overlay', test: () => content.includes('crt-overlay') && content.includes('crt-scanline') || content.includes('repeating-linear-gradient') },
+        { name: 'CRT scanline overlay', test: () => content.includes('crt-overlay') && content.includes('repeating-linear-gradient') },
         { name: 'CRT vignette effect', test: () => content.includes('crt-vignette') && content.includes('radial-gradient') },
+        { name: 'CRT chromatic aberration', test: () => content.includes('crt-color-bleed') && content.includes('mix-blend-mode') },
         { name: 'Retro pixel font', test: () => content.includes('monospace') && content.includes('Courier New') },
-        { name: 'Atari color palette', test: () => content.includes('ATARI_COLORS') && content.includes('#c84848') },
-        { name: 'Falling background pieces', test: () => content.includes('fallingPieces') && content.includes('spawnBgPiece') },
-        { name: 'Background grid stacking', test: () => content.includes('bgGrid') && content.includes('stackPiece') },
-        { name: 'Atari-style block rendering', test: () => content.includes('drawAtariBlock') },
+        { name: 'Atari 2600 NTSC palette', test: () => content.includes('ATARI_2600_PALETTE') && content.includes('ATARI_COLORS') },
         { name: 'CRT flicker animation', test: () => content.includes('crt-flicker') && content.includes('@keyframes') },
-        { name: 'Pixelated rendering', test: () => content.includes('image-rendering: pixelated') }
+        { name: 'Pixelated rendering', test: () => content.includes('image-rendering: pixelated') },
+
+        // Atari background features — game layers
+        { name: 'Star field (Asteroids)', test: () => content.includes('drawStarField') && content.includes('stars') && content.includes('twinkle') },
+        { name: 'Space Invaders sprites', test: () => content.includes('INVADER_SPRITES') && content.includes('invaderFleet') && content.includes('drawInvaders') },
+        { name: 'Pong ball and paddles', test: () => content.includes('pongBallX') && content.includes('pongPaddleLeftY') && content.includes('drawPong') },
+        { name: 'Breakout bricks', test: () => content.includes('breakoutBricks') && content.includes('BRICK_COLORS') && content.includes('drawBreakoutBricks') },
+        { name: 'Falling Tetris pieces', test: () => content.includes('fallingPieces') && content.includes('spawnBgPiece') },
+        { name: 'Background grid stacking', test: () => content.includes('bgGrid') && content.includes('stackPiece') },
+        { name: 'Laser shots', test: () => content.includes('laserShots') && content.includes('updateLasers') },
+        { name: 'Atari-style block rendering', test: () => content.includes('drawAtariBlock') },
+        { name: 'Multi-layer background animation', test: () => content.includes('animateBg') && content.includes('drawStarField') && content.includes('drawBreakoutBricks') && content.includes('drawInvaders') && content.includes('drawPong') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
