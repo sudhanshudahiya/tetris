@@ -58,7 +58,19 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // Atari background features
+        { name: 'Atari background canvas', test: () => content.includes('atariBackground') && content.includes('id="atariBackground"') },
+        { name: 'CRT scanline overlay', test: () => content.includes('crt-overlay') && content.includes('crt-scanline') || content.includes('repeating-linear-gradient') },
+        { name: 'CRT vignette effect', test: () => content.includes('crt-vignette') && content.includes('radial-gradient') },
+        { name: 'Retro pixel font', test: () => content.includes('monospace') && content.includes('Courier New') },
+        { name: 'Atari color palette', test: () => content.includes('ATARI_COLORS') && content.includes('#c84848') },
+        { name: 'Falling background pieces', test: () => content.includes('fallingPieces') && content.includes('spawnBgPiece') },
+        { name: 'Background grid stacking', test: () => content.includes('bgGrid') && content.includes('stackPiece') },
+        { name: 'Atari-style block rendering', test: () => content.includes('drawAtariBlock') },
+        { name: 'CRT flicker animation', test: () => content.includes('crt-flicker') && content.includes('@keyframes') },
+        { name: 'Pixelated rendering', test: () => content.includes('image-rendering: pixelated') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
