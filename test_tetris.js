@@ -58,7 +58,44 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // ── Touch / Swipe Controls ──────────────────────────────
+        // Touch event listeners registered on canvas
+        { name: 'Touch event: touchstart listener', test: () => content.includes('touchstart') && content.includes('handleTouchStart') },
+        { name: 'Touch event: touchmove listener', test: () => content.includes('touchmove') && content.includes('handleTouchMove') },
+        { name: 'Touch event: touchend listener', test: () => content.includes('touchend') && content.includes('handleTouchEnd') },
+        { name: 'Touch event: touchcancel listener', test: () => content.includes('touchcancel') && content.includes('handleTouchCancel') },
+
+        // Swipe detection configuration
+        { name: 'Swipe threshold defined', test: () => content.includes('SWIPE_THRESHOLD') },
+        { name: 'Swipe max time defined', test: () => content.includes('SWIPE_MAX_TIME') },
+        { name: 'Tap max distance defined', test: () => content.includes('TAP_MAX_DISTANCE') },
+        { name: 'Hard drop velocity defined', test: () => content.includes('HARD_DROP_VELOCITY') },
+
+        // Gesture → action mapping
+        { name: 'Swipe left moves piece left', test: () => content.includes('Swipe LEFT') && content.includes('currentPiece.x--') },
+        { name: 'Swipe right moves piece right', test: () => content.includes('Swipe RIGHT') && content.includes('currentPiece.x++') },
+        { name: 'Swipe down soft drop', test: () => content.includes('Swipe DOWN') },
+        { name: 'Fast swipe triggers hard drop', test: () => content.includes('HARD_DROP_VELOCITY') && content.includes('hard drop') },
+        { name: 'Tap rotates piece', test: () => content.includes('TAP') && content.includes('rotatePiece') },
+        { name: 'Swipe up rotates piece', test: () => content.includes('Swipe UP') && content.includes('rotatePiece') },
+
+        // preventDefault to block scrolling
+        { name: 'preventDefault on touch events', test: () => content.includes('e.preventDefault()') },
+
+        // CSS touch-action: none on canvas
+        { name: 'CSS touch-action: none on canvas', test: () => content.includes('touch-action: none') },
+
+        // Touch controls UI hint for mobile
+        { name: 'Touch controls UI section', test: () => content.includes('touch-controls') && content.includes('Swipe') },
+
+        // Touch controls visibility: hidden on desktop, shown on touch devices
+        { name: 'Touch controls hidden by default', test: () => content.includes('.touch-controls') && content.includes('display: none') },
+        { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') },
+
+        // Exposed for testing
+        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
