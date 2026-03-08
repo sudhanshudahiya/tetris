@@ -58,7 +58,24 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // Ghost piece (drop shadow projection)
+        { name: 'Ghost piece function exists', test: () => content.includes('function drawGhost') },
+        { name: 'Ghost piece uses neon outline', test: () => content.includes('shadowBlur') && content.includes('drawGhost') },
+        { name: 'Ghost piece has 20-30% opacity', test: () => {
+            const match = content.match(/ghostAlpha\s*=\s*([\d.]+)/);
+            if (!match) return false;
+            const alpha = parseFloat(match[1]);
+            return alpha >= 0.2 && alpha <= 0.3;
+        }},
+        { name: 'Ghost piece calculates landing position', test: () => content.includes('ghostY') && content.includes('isValidMove') },
+        { name: 'Ghost piece drawn before current piece', test: () => {
+            const ghostIdx = content.indexOf('drawGhost()');
+            const currentIdx = content.indexOf('drawNeonBlock(x, y, currentPiece.color');
+            return ghostIdx > 0 && currentIdx > 0 && ghostIdx < currentIdx;
+        }},
+        { name: 'Ghost piece uses piece color', test: () => content.includes('currentPiece.color') && content.includes('currentPiece.glowBase') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
