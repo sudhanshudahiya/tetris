@@ -58,7 +58,42 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // ── Touch / Mobile Controls ──────────────────────────────
+        // D-pad HTML structure
+        { name: 'D-pad container', test: () => content.includes('touch-controls') && content.includes('dpad') },
+        { name: 'D-pad left button', test: () => content.includes('dpadLeft') && content.includes('dpad-left') },
+        { name: 'D-pad right button', test: () => content.includes('dpadRight') && content.includes('dpad-right') },
+        { name: 'D-pad down button', test: () => content.includes('dpadDown') && content.includes('dpad-down') },
+        { name: 'D-pad up/rotate button', test: () => content.includes('dpadUp') && content.includes('dpad-up') },
+        { name: 'Hard drop action button', test: () => content.includes('btnHardDrop') && content.includes('DROP') },
+        { name: 'Rotate action button', test: () => content.includes('btnRotate') && content.includes('rotate-btn') },
+
+        // D-pad CSS styles
+        { name: 'D-pad CSS grid layout', test: () => content.includes('.dpad') && content.includes('grid-template-columns') },
+        { name: 'D-pad button active states', test: () => content.includes('.dpad-btn:active') || content.includes('.dpad-btn.active') },
+        { name: 'Action button styles', test: () => content.includes('.action-btn') && content.includes('border-radius: 50%') },
+
+        // Touch/Swipe JavaScript logic
+        { name: 'Touch event listeners', test: () => content.includes('touchstart') && content.includes('touchend') },
+        { name: 'Swipe gesture detection', test: () => content.includes('SWIPE_THRESHOLD') && content.includes('touchStartX') },
+        { name: 'Swipe direction handling', test: () => content.includes('Swipe right') && content.includes('Swipe left') && content.includes('Swipe down') },
+        { name: 'D-pad action handler', test: () => content.includes('dpadAction') && content.includes('buttonMap') },
+        { name: 'Button repeat on hold', test: () => content.includes('startRepeat') && content.includes('stopRepeat') },
+        { name: 'Touch controls prevent scroll', test: () => content.includes("e.preventDefault()") && content.includes('touchmove') },
+
+        // Swipe hint overlay
+        { name: 'Swipe hint overlay', test: () => content.includes('swipeHint') && content.includes('swipe-hint') },
+        { name: 'Swipe hint auto-dismiss', test: () => content.includes('dismissSwipeHint') && content.includes('tetris_swipe_hint_seen') },
+
+        // Accessibility
+        { name: 'D-pad button aria-labels', test: () => content.includes('aria-label="Move left"') && content.includes('aria-label="Move right"') },
+        { name: 'Action button aria-labels', test: () => content.includes('aria-label="Hard drop"') && content.includes('aria-label="Rotate piece"') },
+
+        // Touch controls visibility (responsive)
+        { name: 'Touch controls hidden by default', test: () => content.includes('.touch-controls') && content.includes('display: none') },
+        { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');

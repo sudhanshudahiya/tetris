@@ -284,6 +284,157 @@
             font-weight: bold;
         }
 
+        /* ── D-Pad / Touch Controls ───────────────────────────── */
+        .touch-controls {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 12px 16px 20px;
+            background: linear-gradient(to top, rgba(5, 5, 20, 0.95), rgba(5, 5, 20, 0.7), transparent);
+            pointer-events: none;
+        }
+
+        .touch-controls-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            max-width: 500px;
+            margin: 0 auto;
+            pointer-events: auto;
+        }
+
+        /* D-pad cluster (left side) */
+        .dpad {
+            display: grid;
+            grid-template-columns: 56px 56px 56px;
+            grid-template-rows: 56px 56px 56px;
+            gap: 4px;
+        }
+
+        .dpad-btn {
+            width: 56px;
+            height: 56px;
+            border: 1.5px solid rgba(0, 255, 255, 0.45);
+            border-radius: 12px;
+            background: rgba(0, 255, 255, 0.08);
+            color: #00ffff;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: background 0.1s, box-shadow 0.1s, transform 0.1s;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
+        }
+
+        .dpad-btn:active, .dpad-btn.active {
+            background: rgba(0, 255, 255, 0.25);
+            box-shadow: 0 0 18px rgba(0, 255, 255, 0.5);
+            transform: scale(0.93);
+        }
+
+        .dpad-btn.dpad-empty {
+            visibility: hidden;
+        }
+
+        .dpad-btn.dpad-up    { grid-column: 2; grid-row: 1; }
+        .dpad-btn.dpad-left  { grid-column: 1; grid-row: 2; }
+        .dpad-btn.dpad-center{ grid-column: 2; grid-row: 2; visibility: hidden; }
+        .dpad-btn.dpad-right { grid-column: 3; grid-row: 2; }
+        .dpad-btn.dpad-down  { grid-column: 2; grid-row: 3; }
+
+        /* Action buttons (right side) */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .action-btn {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(180, 0, 255, 0.5);
+            background: rgba(180, 0, 255, 0.1);
+            color: #cc44ff;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: background 0.1s, box-shadow 0.1s, transform 0.1s;
+            box-shadow: 0 0 10px rgba(180, 0, 255, 0.2);
+        }
+
+        .action-btn:active, .action-btn.active {
+            background: rgba(180, 0, 255, 0.3);
+            box-shadow: 0 0 22px rgba(180, 0, 255, 0.6);
+            transform: scale(0.93);
+        }
+
+        .action-btn.rotate-btn {
+            border-color: rgba(255, 200, 0, 0.5);
+            background: rgba(255, 200, 0, 0.1);
+            color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 200, 0, 0.2);
+        }
+
+        .action-btn.rotate-btn:active, .action-btn.rotate-btn.active {
+            background: rgba(255, 200, 0, 0.3);
+            box-shadow: 0 0 22px rgba(255, 200, 0, 0.6);
+        }
+
+        /* Swipe hint overlay (shown briefly on first game) */
+        .swipe-hint {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.88);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 24px 32px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            line-height: 1.8;
+            max-width: 280px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.15);
+            animation: hintFadeIn 0.3s ease;
+        }
+
+        .swipe-hint h4 {
+            color: #00ffff;
+            margin-bottom: 12px;
+            font-size: 16px;
+            letter-spacing: 2px;
+        }
+
+        .swipe-hint .hint-icon {
+            font-size: 20px;
+            margin-right: 6px;
+        }
+
+        @keyframes hintFadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+            to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
         @media (max-width: 768px) {
             .game-container {
                 flex-direction: column;
@@ -310,6 +461,25 @@
 
             .game-title {
                 font-size: 20px;
+            }
+
+            .controls {
+                display: none;
+            }
+        }
+
+        /* Show touch controls on touch-capable devices */
+        @media (pointer: coarse), (max-width: 768px) {
+            .touch-controls {
+                display: block;
+            }
+
+            body {
+                padding-bottom: 200px;
+            }
+
+            .game-container {
+                margin-bottom: 10px;
             }
         }
     </style>
@@ -363,6 +533,38 @@
                 <button class="game-btn pause-btn" id="pauseBtn" onclick="pauseGame()">Pause</button>
             </div>
         </div>
+    </div>
+
+    <!-- On-screen D-pad and action buttons for mobile -->
+    <div class="touch-controls" id="touchControls">
+        <div class="touch-controls-inner">
+            <div class="dpad">
+                <button class="dpad-btn dpad-empty" aria-hidden="true"></button>
+                <button class="dpad-btn dpad-up" id="dpadUp" aria-label="Rotate">&#x21BB;</button>
+                <button class="dpad-btn dpad-empty" aria-hidden="true"></button>
+                <button class="dpad-btn dpad-left" id="dpadLeft" aria-label="Move left">&#x25C0;</button>
+                <button class="dpad-btn dpad-center" aria-hidden="true"></button>
+                <button class="dpad-btn dpad-right" id="dpadRight" aria-label="Move right">&#x25B6;</button>
+                <button class="dpad-btn dpad-empty" aria-hidden="true"></button>
+                <button class="dpad-btn dpad-down" id="dpadDown" aria-label="Soft drop">&#x25BC;</button>
+                <button class="dpad-btn dpad-empty" aria-hidden="true"></button>
+            </div>
+            <div class="action-buttons">
+                <button class="action-btn rotate-btn" id="btnRotate" aria-label="Rotate piece">↻</button>
+                <button class="action-btn" id="btnHardDrop" aria-label="Hard drop">DROP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Swipe hint shown once on mobile -->
+    <div class="swipe-hint" id="swipeHint">
+        <h4>TOUCH CONTROLS</h4>
+        <div><span class="hint-icon">👆</span> Swipe ← → to move</div>
+        <div><span class="hint-icon">👆</span> Swipe ↓ to soft drop</div>
+        <div><span class="hint-icon">👆</span> Swipe ↑ to rotate</div>
+        <div><span class="hint-icon">👆</span> Tap to hard drop</div>
+        <div style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.5);">Use the D-pad below too!</div>
+        <button onclick="dismissSwipeHint()" style="margin-top:14px;padding:8px 24px;background:rgba(0,255,255,0.15);border:1px solid rgba(0,255,255,0.4);border-radius:8px;color:#00ffff;font-size:13px;cursor:pointer;">Got it!</button>
     </div>
 
     <script>
@@ -1284,6 +1486,288 @@
         ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         drawBoardGrid();
+
+        // ============================================================
+        //  TOUCH / SWIPE CONTROLS
+        // ============================================================
+
+        // ── Swipe hint ─────────────────────────────────────────
+        function dismissSwipeHint() {
+            document.getElementById('swipeHint').style.display = 'none';
+            try { localStorage.setItem('tetris_swipe_hint_seen', '1'); } catch(e) {}
+        }
+
+        function maybeShowSwipeHint() {
+            const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            if (!isTouchDevice) return;
+            try {
+                if (localStorage.getItem('tetris_swipe_hint_seen') === '1') return;
+            } catch(e) {}
+            document.getElementById('swipeHint').style.display = 'block';
+            // Auto-dismiss after 5 seconds
+            setTimeout(dismissSwipeHint, 5000);
+        }
+
+        // Show hint on first Start
+        const origStartGame = startGame;
+        startGame = function() {
+            origStartGame();
+            maybeShowSwipeHint();
+        };
+
+        // ── Swipe gesture detection on game canvas ─────────────
+        (function() {
+            const swipeTarget = document.querySelector('.game-board');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchStartTime = 0;
+            let isSwiping = false;
+            const SWIPE_THRESHOLD = 30;   // minimum px to qualify as swipe
+            const TAP_THRESHOLD = 15;     // max px movement for a tap
+            const TAP_TIME = 250;         // max ms for a tap
+
+            swipeTarget.addEventListener('touchstart', function(e) {
+                if (e.touches.length !== 1) return;
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartTime = Date.now();
+                isSwiping = true;
+            }, { passive: true });
+
+            swipeTarget.addEventListener('touchmove', function(e) {
+                if (!isSwiping) return;
+                // Prevent page scrolling while swiping on game board
+                e.preventDefault();
+            }, { passive: false });
+
+            swipeTarget.addEventListener('touchend', function(e) {
+                if (!isSwiping) return;
+                isSwiping = false;
+
+                if (!gameRunning || gamePaused) return;
+
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+                const elapsed = Date.now() - touchStartTime;
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+
+                // Tap detection (short touch with little movement)
+                if (absDx < TAP_THRESHOLD && absDy < TAP_THRESHOLD && elapsed < TAP_TIME) {
+                    // Tap = rotate
+                    const rotatedShape = rotatePiece(currentPiece.shape);
+                    if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
+                        currentPiece.shape = rotatedShape;
+                    }
+                    drawBoard();
+                    return;
+                }
+
+                // Swipe detection
+                if (absDx < SWIPE_THRESHOLD && absDy < SWIPE_THRESHOLD) return;
+
+                if (absDx > absDy) {
+                    // Horizontal swipe
+                    if (dx > 0) {
+                        // Swipe right
+                        if (isValidMove(currentPiece, 1, 0)) {
+                            currentPiece.x++;
+                        }
+                    } else {
+                        // Swipe left
+                        if (isValidMove(currentPiece, -1, 0)) {
+                            currentPiece.x--;
+                        }
+                    }
+                } else {
+                    // Vertical swipe
+                    if (dy > 0) {
+                        // Swipe down → soft drop
+                        if (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score++;
+                            updateDisplay();
+                        }
+                    } else {
+                        // Swipe up → rotate
+                        const rotated = rotatePiece(currentPiece.shape);
+                        if (isValidMove(currentPiece, 0, 0, rotated)) {
+                            currentPiece.shape = rotated;
+                        }
+                    }
+                }
+
+                drawBoard();
+            }, { passive: true });
+        })();
+
+        // ── D-Pad button handlers ──────────────────────────────
+        (function() {
+            function dpadAction(action) {
+                if (!gameRunning || gamePaused) return;
+
+                switch (action) {
+                    case 'left':
+                        if (isValidMove(currentPiece, -1, 0)) {
+                            currentPiece.x--;
+                        }
+                        break;
+                    case 'right':
+                        if (isValidMove(currentPiece, 1, 0)) {
+                            currentPiece.x++;
+                        }
+                        break;
+                    case 'down':
+                        if (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score++;
+                            updateDisplay();
+                        }
+                        break;
+                    case 'rotate':
+                        const rotatedShape = rotatePiece(currentPiece.shape);
+                        if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
+                            currentPiece.shape = rotatedShape;
+                        }
+                        break;
+                    case 'hardDrop':
+                        while (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score += 2;
+                        }
+                        updateDisplay();
+                        placePiece();
+                        break;
+                }
+
+                drawBoard();
+            }
+
+            // Map button IDs to actions
+            const buttonMap = {
+                'dpadLeft':    'left',
+                'dpadRight':   'right',
+                'dpadDown':    'down',
+                'dpadUp':      'rotate',
+                'btnRotate':   'rotate',
+                'btnHardDrop': 'hardDrop'
+            };
+
+            // Repeat state for held buttons
+            let repeatTimer = null;
+            let repeatAction = null;
+
+            function startRepeat(action) {
+                // Immediately fire once
+                dpadAction(action);
+                repeatAction = action;
+                // Start repeating after 180ms delay, then every 80ms
+                repeatTimer = setTimeout(function repeat() {
+                    dpadAction(action);
+                    repeatTimer = setTimeout(repeat, 80);
+                }, 180);
+            }
+
+            function stopRepeat() {
+                if (repeatTimer) {
+                    clearTimeout(repeatTimer);
+                    repeatTimer = null;
+                }
+                repeatAction = null;
+            }
+
+            // Attach touch events to each button
+            Object.keys(buttonMap).forEach(function(id) {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const action = buttonMap[id];
+
+                // For left/right/down, enable repeat on hold
+                const repeatable = ['left', 'right', 'down'].includes(action);
+
+                btn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    btn.classList.add('active');
+                    if (repeatable) {
+                        startRepeat(action);
+                    } else {
+                        dpadAction(action);
+                    }
+                }, { passive: false });
+
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    btn.classList.remove('active');
+                    if (repeatable) {
+                        stopRepeat();
+                    }
+                }, { passive: false });
+
+                btn.addEventListener('touchcancel', function(e) {
+                    btn.classList.remove('active');
+                    if (repeatable) {
+                        stopRepeat();
+                    }
+                }, { passive: true });
+
+                // Also support mouse for testing on desktop
+                btn.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    btn.classList.add('active');
+                    if (repeatable) {
+                        startRepeat(action);
+                    } else {
+                        dpadAction(action);
+                    }
+                });
+
+                btn.addEventListener('mouseup', function(e) {
+                    btn.classList.remove('active');
+                    if (repeatable) {
+                        stopRepeat();
+                    }
+                });
+
+                btn.addEventListener('mouseleave', function(e) {
+                    btn.classList.remove('active');
+                    if (repeatable) {
+                        stopRepeat();
+                    }
+                });
+            });
+
+            // Prevent default on the entire touch control area to avoid scroll
+            const touchControls = document.getElementById('touchControls');
+            if (touchControls) {
+                touchControls.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                }, { passive: false });
+            }
+        })();
+
+        // ── Resize game canvas on mobile ───────────────────────
+        (function() {
+            function resizeGameForMobile() {
+                const isMobile = window.innerWidth <= 768;
+                const gameBoard = document.querySelector('.game-board');
+
+                if (isMobile) {
+                    // Scale canvas to fit the mobile board size
+                    const boardWidth = gameBoard.offsetWidth;
+                    const scale = boardWidth / 300;
+                    canvas.style.width = boardWidth + 'px';
+                    canvas.style.height = (600 * scale) + 'px';
+                } else {
+                    canvas.style.width = '';
+                    canvas.style.height = '';
+                }
+            }
+
+            window.addEventListener('resize', resizeGameForMobile);
+            resizeGameForMobile();
+        })();
     </script>
 </body>
 </html>
