@@ -902,6 +902,9 @@
         // Piece index tracker for glow
         let pieceColorIndex = 0;
 
+        // Ghost piece (drop shadow projection) cached Y position
+        let ghostY = 0;
+
         // Initialize game board
         function initBoard() {
             board = [];
@@ -1009,6 +1012,7 @@
 
             // Create new piece
             currentPiece = createPiece();
+            calculateGhostY();
 
             // Check game over
             if (!isValidMove(currentPiece, 0, 0)) {
@@ -1070,25 +1074,42 @@
             }
         }
 
-        // Draw ghost piece (landing preview)
-        function drawGhost() {
-            if (!currentPiece) return;
-            let ghostY = currentPiece.y;
+        // Calculate ghost piece Y position (hard drop projection)
+        function calculateGhostY() {
+            if (!currentPiece) {
+                ghostY = 0;
+                return;
+            }
+            ghostY = currentPiece.y;
             while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
                 ghostY++;
             }
-            if (ghostY === currentPiece.y) return;
+        }
+
+        // Draw ghost piece (landing preview / drop shadow projection)
+        function drawGhost() {
+            if (!currentPiece) return;
+            if (ghostY === currentPiece.y) return; // piece is already at landing position
 
             ctx.save();
-            ctx.globalAlpha = 0.2;
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
                     if (currentPiece.shape[row][col] === 1) {
                         const x = (currentPiece.x + col) * BLOCK_SIZE;
                         const y = (ghostY + row) * BLOCK_SIZE;
+
+                        // Subtle filled background
+                        ctx.fillStyle = currentPiece.color;
+                        ctx.globalAlpha = 0.08;
+                        ctx.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+
+                        // Dashed outline for clear distinction from active piece
+                        ctx.globalAlpha = 0.35;
                         ctx.strokeStyle = currentPiece.color;
-                        ctx.lineWidth = 1;
+                        ctx.lineWidth = 1.5;
+                        ctx.setLineDash([4, 3]);
                         ctx.strokeRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.setLineDash([]);
                     }
                 }
             }
@@ -1152,6 +1173,7 @@
             if (dropTime > dropInterval) {
                 if (isValidMove(currentPiece, 0, 1)) {
                     currentPiece.y++;
+                    calculateGhostY();
                 } else {
                     placePiece();
                 }
@@ -1175,11 +1197,13 @@
                 case 'ArrowLeft':
                     if (isValidMove(currentPiece, -1, 0)) {
                         currentPiece.x--;
+                        calculateGhostY();
                     }
                     break;
                 case 'ArrowRight':
                     if (isValidMove(currentPiece, 1, 0)) {
                         currentPiece.x++;
+                        calculateGhostY();
                     }
                     break;
                 case 'ArrowDown':
@@ -1187,20 +1211,20 @@
                         currentPiece.y++;
                         score++;
                         updateDisplay();
+                        calculateGhostY();
                     }
                     break;
                 case 'ArrowUp':
                     const rotatedShape = rotatePiece(currentPiece.shape);
                     if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
                         currentPiece.shape = rotatedShape;
+                        calculateGhostY();
                     }
                     break;
                 case ' ':
-                    // Hard drop
-                    while (isValidMove(currentPiece, 0, 1)) {
-                        currentPiece.y++;
-                        score += 2;
-                    }
+                    // Hard drop - use ghost position for instant placement
+                    score += (ghostY - currentPiece.y) * 2;
+                    currentPiece.y = ghostY;
                     updateDisplay();
                     placePiece();
                     break;
@@ -1215,6 +1239,7 @@
 
             initBoard();
             currentPiece = createPiece();
+            calculateGhostY();
             gameRunning = true;
             gamePaused = false;
             score = 0;

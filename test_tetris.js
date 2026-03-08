@@ -51,6 +51,28 @@ function testTetrisRequirements() {
         // Hard drop feature
         { name: 'Hard drop (spacebar)', test: () => content.includes("' '") || content.includes("case ' '") },
 
+        // Ghost piece (drop shadow projection)
+        { name: 'Ghost piece calculation function', test: () => content.includes('calculateGhostY') },
+        { name: 'Ghost piece draw function', test: () => content.includes('drawGhost') },
+        { name: 'Ghost piece cached Y variable', test: () => content.includes('let ghostY') },
+        { name: 'Ghost updates on left move', test: () => content.includes("case 'ArrowLeft'") && content.includes('calculateGhostY') },
+        { name: 'Ghost updates on right move', test: () => {
+            // Verify calculateGhostY appears after ArrowRight handling
+            const rightIdx = content.indexOf("case 'ArrowRight'");
+            const nextCase = content.indexOf("case 'ArrowDown'");
+            const ghostCall = content.indexOf('calculateGhostY', rightIdx);
+            return rightIdx > 0 && ghostCall > rightIdx && ghostCall < nextCase;
+        }},
+        { name: 'Ghost updates on rotation', test: () => {
+            // Verify calculateGhostY appears after ArrowUp (rotation) handling
+            const upIdx = content.indexOf("case 'ArrowUp'");
+            const nextCase = content.indexOf("case ' '");
+            const ghostCall = content.indexOf('calculateGhostY', upIdx);
+            return upIdx > 0 && ghostCall > upIdx && ghostCall < nextCase;
+        }},
+        { name: 'Ghost piece dashed outline style', test: () => content.includes('setLineDash') },
+        { name: 'Hard drop uses ghost position', test: () => content.includes('currentPiece.y = ghostY') },
+
         // Game pieces
         { name: 'Tetris pieces defined', test: () => content.includes('PIECES') && content.includes('COLORS') },
 
