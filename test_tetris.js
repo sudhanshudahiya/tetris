@@ -58,7 +58,17 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // Ghost piece (drop shadow projection) features
+        { name: 'Ghost position calculator', test: () => content.includes('getGhostPosition') },
+        { name: 'Ghost piece renderer', test: () => content.includes('drawGhost') },
+        { name: 'Ghost toggle state', test: () => content.includes('ghostEnabled') },
+        { name: 'Ghost toggle key (G)', test: () => content.includes("'g'") || content.includes("'G'") },
+        { name: 'Ghost pulsing animation', test: () => content.includes('ghostTime') && content.includes('pulse') },
+        { name: 'Ghost dashed border', test: () => content.includes('setLineDash') },
+        { name: 'Ghost neon glow effect', test: () => content.includes('shadowBlur') && content.includes('drawGhost') },
+        { name: 'Ghost control hint in UI', test: () => content.includes('Ghost Toggle') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');

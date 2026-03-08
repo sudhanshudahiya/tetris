@@ -355,6 +355,7 @@
                 <div class="control-item"><kbd>↑</kbd> Rotate</div>
                 <div class="control-item"><kbd>Space</kbd> Hard Drop</div>
                 <div class="control-item"><kbd>P</kbd> Pause</div>
+                <div class="control-item"><kbd>G</kbd> Ghost Toggle</div>
             </div>
 
             <div class="buttons">
@@ -902,6 +903,10 @@
         // Piece index tracker for glow
         let pieceColorIndex = 0;
 
+        // Ghost piece settings
+        let ghostEnabled = true;
+        let ghostTime = 0;
+
         // Initialize game board
         function initBoard() {
             board = [];
@@ -1070,28 +1075,71 @@
             }
         }
 
-        // Draw ghost piece (landing preview)
-        function drawGhost() {
-            if (!currentPiece) return;
-            let ghostY = currentPiece.y;
-            while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
+        // Calculate ghost piece landing position
+        function getGhostPosition(piece) {
+            if (!piece) return null;
+            let ghostY = piece.y;
+            while (isValidMove(piece, 0, ghostY - piece.y + 1)) {
                 ghostY++;
             }
-            if (ghostY === currentPiece.y) return;
+            // Return null if ghost would overlap the current piece
+            if (ghostY === piece.y) return null;
+            return { x: piece.x, y: ghostY };
+        }
+
+        // Draw ghost piece (drop shadow projection)
+        function drawGhost() {
+            if (!ghostEnabled || !currentPiece) return;
+
+            const ghostPos = getGhostPosition(currentPiece);
+            if (!ghostPos) return;
+
+            // Pulsing animation for the ghost
+            ghostTime += 0.04;
+            const pulse = 0.15 + Math.sin(ghostTime * 2) * 0.08;
+            const glowPulse = 0.3 + Math.sin(ghostTime * 2) * 0.15;
 
             ctx.save();
-            ctx.globalAlpha = 0.2;
+
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
                     if (currentPiece.shape[row][col] === 1) {
-                        const x = (currentPiece.x + col) * BLOCK_SIZE;
-                        const y = (ghostY + row) * BLOCK_SIZE;
-                        ctx.strokeStyle = currentPiece.color;
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        const x = (ghostPos.x + col) * BLOCK_SIZE;
+                        const y = (ghostPos.y + row) * BLOCK_SIZE;
+                        const color = currentPiece.color;
+                        const glowBase = currentPiece.glowBase;
+
+                        // Outer glow halo
+                        ctx.shadowColor = color;
+                        ctx.shadowBlur = 8 + Math.sin(ghostTime * 3) * 3;
+                        ctx.fillStyle = (glowBase || 'rgba(255,255,255,') + (pulse * 0.15) + ')';
+                        ctx.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.shadowBlur = 0;
+
+                        // Inner fill with gradient (very translucent)
+                        const grad = ctx.createLinearGradient(x, y, x + BLOCK_SIZE, y + BLOCK_SIZE);
+                        grad.addColorStop(0, (glowBase || 'rgba(255,255,255,') + (pulse * 0.3) + ')');
+                        grad.addColorStop(1, (glowBase || 'rgba(255,255,255,') + (pulse * 0.08) + ')');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(x + 2, y + 2, BLOCK_SIZE - 4, BLOCK_SIZE - 4);
+
+                        // Dashed neon border
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1.2;
+                        ctx.globalAlpha = glowPulse;
+                        ctx.setLineDash([4, 3]);
+                        ctx.strokeRect(x + 1.5, y + 1.5, BLOCK_SIZE - 3, BLOCK_SIZE - 3);
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 1;
+
+                        // Subtle inner highlight (top-left)
+                        ctx.fillStyle = `rgba(255,255,255,${pulse * 0.25})`;
+                        ctx.fillRect(x + 4, y + 4, BLOCK_SIZE - 10, 1.5);
+                        ctx.fillRect(x + 4, y + 4, 1.5, BLOCK_SIZE - 10);
                     }
                 }
             }
+
             ctx.restore();
         }
 
@@ -1166,6 +1214,12 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'p' || e.key === 'P') {
                 pauseGame();
+                return;
+            }
+
+            if (e.key === 'g' || e.key === 'G') {
+                ghostEnabled = !ghostEnabled;
+                if (gameRunning && !gamePaused) drawBoard();
                 return;
             }
 
