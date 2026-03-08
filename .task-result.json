@@ -1,0 +1,48 @@
+{
+  "status": "completed",
+  "pr": {
+    "url": "https://github.com/sudhanshudahiya/tetris/pull/6",
+    "title": "feat: add ghost piece drop shadow projection",
+    "branch": "goal/add-ghost-piece-drop-shadow-projection/issue-e98e5a0c"
+  },
+  "summary": "Enhanced the ghost piece (drop shadow projection) with neon-style rendering including pulsing glow, dashed borders, and gradient fills. Extracted getGhostPosition() as a reusable utility and added G key toggle with UI hint.",
+  "changes": [
+    "Extracted getGhostPosition() utility function for reusable landing position calculation",
+    "Enhanced drawGhost() with pulsing neon glow, dashed borders, gradient fills, and inner highlights",
+    "Added ghost piece toggle via G key with control hint in UI panel",
+    "Added ghostEnabled and ghostTime state variables",
+    "Added 8 new tests for ghost piece functionality"
+  ],
+  "files_changed": ["index.html", "test_tetris.js"],
+  "tests": {
+    "passed": true,
+    "total": 26,
+    "new_tests": 8,
+    "details": "8 new tests cover: ghost position calculator, ghost renderer, toggle state, toggle key, pulsing animation, dashed border, neon glow effect, and UI control hint"
+  },
+  "tradeoffs": [
+    {
+      "choice": "Ghost renders every frame with sin-based animation",
+      "reason": "Provides smooth pulsing visual feedback matching the neon aesthetic",
+      "downside": "Minimal extra computation per frame, negligible on modern hardware"
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Extracted getGhostPosition() as separate function",
+      "reason": "Reusable for hard drop calculations and future features like ghost piece distance display",
+      "alternatives": ["Keep calculation inline in drawGhost()"]
+    },
+    {
+      "decision": "Ghost enabled by default with G key toggle",
+      "reason": "Most Tetris players expect ghost piece; toggle lets players who find it distracting disable it",
+      "alternatives": ["Ghost disabled by default", "Settings menu toggle"]
+    },
+    {
+      "decision": "Dashed border instead of solid for ghost blocks",
+      "reason": "Clearly distinguishes ghost from active piece while maintaining neon theme",
+      "alternatives": ["Solid outline only", "Filled blocks with low opacity", "Dotted pattern"]
+    }
+  ],
+  "notes": "The ghost piece automatically updates when the current piece moves or rotates. It disappears when the piece is already at its landing position (no visual overlap)."
+}
