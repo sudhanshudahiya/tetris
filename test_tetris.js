@@ -58,7 +58,27 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // Touch controls - swipe gestures
+        { name: 'Touch event listeners (touchstart)', test: () => content.includes('touchstart') },
+        { name: 'Touch event listeners (touchend)', test: () => content.includes('touchend') },
+        { name: 'Touch event listeners (touchmove)', test: () => content.includes('touchmove') },
+        { name: 'Swipe threshold configuration', test: () => content.includes('SWIPE_THRESHOLD') },
+        { name: 'Swipe direction detection', test: () => content.includes('touchStartX') && content.includes('touchStartY') },
+        { name: 'Tap to rotate gesture', test: () => content.includes('TAP_THRESHOLD') },
+
+        // Touch controls - on-screen buttons
+        { name: 'Touch control buttons HTML', test: () => content.includes('touch-controls') && content.includes('touchControls') },
+        { name: 'Touch left button', test: () => content.includes('touchLeft') },
+        { name: 'Touch right button', test: () => content.includes('touchRight') },
+        { name: 'Touch down button', test: () => content.includes('touchDown') },
+        { name: 'Touch rotate button', test: () => content.includes('touchRotate') },
+        { name: 'Touch hard drop button', test: () => content.includes('touchDrop') },
+        { name: 'Touch button repeat support', test: () => content.includes('repeatInterval') && content.includes('setupTouchButton') },
+        { name: 'Touch controls CSS', test: () => content.includes('.touch-btn') && content.includes('.touch-controls') },
+        { name: 'Prevent scroll on game area', test: () => content.includes('preventDefault') },
+        { name: 'Accessibility labels on touch buttons', test: () => content.includes('aria-label') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');

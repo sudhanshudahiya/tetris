@@ -284,6 +284,74 @@
             font-weight: bold;
         }
 
+        /* Touch controls for mobile */
+        .touch-controls {
+            display: none;
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto;
+            padding: 10px 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .touch-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .touch-btn {
+            width: 64px;
+            height: 64px;
+            border: 2px solid rgba(0, 255, 255, 0.4);
+            border-radius: 14px;
+            background: rgba(0, 255, 255, 0.08);
+            color: #00ffff;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(0, 255, 255, 0.25);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            transform: scale(0.93);
+        }
+
+        .touch-btn.wide {
+            width: 138px;
+        }
+
+        .touch-btn.drop-btn {
+            border-color: rgba(255, 159, 0, 0.5);
+            background: rgba(255, 159, 0, 0.08);
+            color: #ff9f00;
+            box-shadow: 0 0 12px rgba(255, 159, 0, 0.15);
+        }
+
+        .touch-btn.drop-btn:active, .touch-btn.drop-btn.active {
+            background: rgba(255, 159, 0, 0.25);
+            box-shadow: 0 0 20px rgba(255, 159, 0, 0.4);
+        }
+
+        .touch-hint {
+            display: none;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+
         @media (max-width: 768px) {
             .game-container {
                 flex-direction: column;
@@ -310,6 +378,21 @@
 
             .game-title {
                 font-size: 20px;
+            }
+
+            .touch-controls {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .touch-hint {
+                display: block;
+            }
+
+            /* Hide keyboard controls info on mobile */
+            .controls {
+                display: none;
             }
         }
     </style>
@@ -362,6 +445,22 @@
                 <button class="game-btn restart-btn" id="restartBtn" onclick="restartGame()">Restart</button>
                 <button class="game-btn pause-btn" id="pauseBtn" onclick="pauseGame()">Pause</button>
             </div>
+        </div>
+
+        <!-- Mobile touch controls -->
+        <div class="touch-controls" id="touchControls">
+            <div class="touch-row">
+                <button class="touch-btn" id="touchRotate" aria-label="Rotate piece">&#x21BB;</button>
+            </div>
+            <div class="touch-row">
+                <button class="touch-btn" id="touchLeft" aria-label="Move left">&#x25C0;</button>
+                <button class="touch-btn" id="touchDown" aria-label="Soft drop">&#x25BC;</button>
+                <button class="touch-btn" id="touchRight" aria-label="Move right">&#x25B6;</button>
+            </div>
+            <div class="touch-row">
+                <button class="touch-btn wide drop-btn" id="touchDrop" aria-label="Hard drop">&#x2B07; DROP</button>
+            </div>
+            <div class="touch-hint">Swipe on game board: ← → move &nbsp; ↑ rotate &nbsp; ↓ drop</div>
         </div>
     </div>
 
@@ -1208,6 +1307,191 @@
 
             drawBoard();
         });
+
+        // ============================================================
+        //  TOUCH / SWIPE CONTROLS
+        // ============================================================
+
+        // --- Swipe gesture detection on the game canvas ---
+        let touchStartX = null;
+        let touchStartY = null;
+        let touchStartTime = null;
+        const SWIPE_THRESHOLD = 30;   // minimum px to count as a swipe
+        const TAP_THRESHOLD = 10;     // max px movement to count as a tap
+
+        canvas.addEventListener('touchstart', function (e) {
+            if (!gameRunning || gamePaused) return;
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTime = Date.now();
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', function (e) {
+            e.preventDefault(); // prevent scrolling while touching game board
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', function (e) {
+            if (!gameRunning || gamePaused) return;
+            if (touchStartX === null || touchStartY === null) return;
+
+            const touch = e.changedTouches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+            const elapsed = Date.now() - touchStartTime;
+
+            // Tap detection → rotate
+            if (absDx < TAP_THRESHOLD && absDy < TAP_THRESHOLD && elapsed < 300) {
+                const rotatedShape = rotatePiece(currentPiece.shape);
+                if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
+                    currentPiece.shape = rotatedShape;
+                }
+                drawBoard();
+                touchStartX = null;
+                touchStartY = null;
+                return;
+            }
+
+            // Swipe detection
+            if (absDx > absDy && absDx > SWIPE_THRESHOLD) {
+                // Horizontal swipe
+                if (dx < 0) {
+                    // Swipe left
+                    if (isValidMove(currentPiece, -1, 0)) {
+                        currentPiece.x--;
+                    }
+                } else {
+                    // Swipe right
+                    if (isValidMove(currentPiece, 1, 0)) {
+                        currentPiece.x++;
+                    }
+                }
+            } else if (absDy > SWIPE_THRESHOLD) {
+                // Vertical swipe
+                if (dy < 0) {
+                    // Swipe up → rotate
+                    const rotatedShape = rotatePiece(currentPiece.shape);
+                    if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
+                        currentPiece.shape = rotatedShape;
+                    }
+                } else {
+                    // Swipe down → soft drop (or hard drop if fast swipe)
+                    if (elapsed < 150 && absDy > 80) {
+                        // Fast long swipe → hard drop
+                        while (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score += 2;
+                        }
+                        updateDisplay();
+                        placePiece();
+                    } else {
+                        // Regular swipe down → soft drop one row
+                        if (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score++;
+                            updateDisplay();
+                        }
+                    }
+                }
+            }
+
+            drawBoard();
+            touchStartX = null;
+            touchStartY = null;
+        }, { passive: false });
+
+        // --- On-screen button controls ---
+        function setupTouchButton(id, action) {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+
+            let repeatInterval = null;
+
+            function doAction(e) {
+                e.preventDefault();
+                if (!gameRunning || gamePaused) return;
+                action();
+                drawBoard();
+            }
+
+            function startRepeat(e) {
+                doAction(e);
+                // For directional buttons, repeat while held
+                if (id === 'touchLeft' || id === 'touchRight' || id === 'touchDown') {
+                    repeatInterval = setInterval(() => {
+                        if (!gameRunning || gamePaused) {
+                            clearInterval(repeatInterval);
+                            repeatInterval = null;
+                            return;
+                        }
+                        action();
+                        drawBoard();
+                    }, 100);
+                }
+            }
+
+            function stopRepeat() {
+                if (repeatInterval) {
+                    clearInterval(repeatInterval);
+                    repeatInterval = null;
+                }
+            }
+
+            btn.addEventListener('touchstart', startRepeat, { passive: false });
+            btn.addEventListener('touchend', function (e) {
+                e.preventDefault();
+                stopRepeat();
+            }, { passive: false });
+            btn.addEventListener('touchcancel', stopRepeat);
+            // Also support mouse for testing
+            btn.addEventListener('mousedown', startRepeat);
+            btn.addEventListener('mouseup', stopRepeat);
+            btn.addEventListener('mouseleave', stopRepeat);
+        }
+
+        setupTouchButton('touchLeft', function () {
+            if (isValidMove(currentPiece, -1, 0)) {
+                currentPiece.x--;
+            }
+        });
+
+        setupTouchButton('touchRight', function () {
+            if (isValidMove(currentPiece, 1, 0)) {
+                currentPiece.x++;
+            }
+        });
+
+        setupTouchButton('touchDown', function () {
+            if (isValidMove(currentPiece, 0, 1)) {
+                currentPiece.y++;
+                score++;
+                updateDisplay();
+            }
+        });
+
+        setupTouchButton('touchRotate', function () {
+            const rotatedShape = rotatePiece(currentPiece.shape);
+            if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
+                currentPiece.shape = rotatedShape;
+            }
+        });
+
+        setupTouchButton('touchDrop', function () {
+            while (isValidMove(currentPiece, 0, 1)) {
+                currentPiece.y++;
+                score += 2;
+            }
+            updateDisplay();
+            placePiece();
+        });
+
+        // Prevent page scrolling when touching the game container on mobile
+        document.querySelector('.game-container').addEventListener('touchmove', function (e) {
+            e.preventDefault();
+        }, { passive: false });
 
         // Game control functions
         function startGame() {
