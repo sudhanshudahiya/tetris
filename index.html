@@ -1070,28 +1070,109 @@
             }
         }
 
-        // Draw ghost piece (landing preview)
-        function drawGhost() {
-            if (!currentPiece) return;
+        // Calculate ghost piece landing Y position
+        function getGhostY() {
+            if (!currentPiece) return currentPiece.y;
             let ghostY = currentPiece.y;
             while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
                 ghostY++;
             }
-            if (ghostY === currentPiece.y) return;
+            return ghostY;
+        }
+
+        // Draw drop projection lines between current piece and ghost
+        function drawDropProjection(ghostY) {
+            if (!currentPiece) return;
+            if (ghostY <= currentPiece.y) return;
 
             ctx.save();
-            ctx.globalAlpha = 0.2;
+
+            // For each column the piece occupies, draw a subtle drop trail
+            for (let col = 0; col < currentPiece.shape[0].length; col++) {
+                // Find topmost and bottommost filled cell in this column
+                let topRow = -1;
+                let bottomRow = -1;
+                for (let row = 0; row < currentPiece.shape.length; row++) {
+                    if (currentPiece.shape[row][col] === 1) {
+                        if (topRow === -1) topRow = row;
+                        bottomRow = row;
+                    }
+                }
+                if (topRow === -1) continue;
+
+                const x = (currentPiece.x + col) * BLOCK_SIZE + BLOCK_SIZE / 2;
+                const yStart = (currentPiece.y + bottomRow + 1) * BLOCK_SIZE;
+                const yEnd = (ghostY + topRow) * BLOCK_SIZE;
+
+                if (yEnd <= yStart) continue;
+
+                // Draw a gradient trail line
+                const trailGrad = ctx.createLinearGradient(x, yStart, x, yEnd);
+                trailGrad.addColorStop(0, currentPiece.glowBase + '0.12)');
+                trailGrad.addColorStop(0.5, currentPiece.glowBase + '0.06)');
+                trailGrad.addColorStop(1, currentPiece.glowBase + '0.02)');
+
+                ctx.strokeStyle = trailGrad;
+                ctx.lineWidth = BLOCK_SIZE * 0.4;
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.moveTo(x, yStart);
+                ctx.lineTo(x, yEnd);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // Ghost piece animation phase
+        let ghostPulsePhase = 0;
+
+        // Draw ghost piece (landing preview) with neon shadow projection
+        function drawGhost() {
+            if (!currentPiece) return;
+            const ghostY = getGhostY();
+            if (ghostY === currentPiece.y) return;
+
+            // Advance pulse animation
+            ghostPulsePhase += 0.06;
+            const pulseAlpha = 0.18 + Math.sin(ghostPulsePhase) * 0.08; // oscillates 0.10 – 0.26
+
+            // Draw drop projection trail
+            drawDropProjection(ghostY);
+
+            ctx.save();
+
+            // Draw each ghost block with neon styling at reduced opacity
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
                     if (currentPiece.shape[row][col] === 1) {
                         const x = (currentPiece.x + col) * BLOCK_SIZE;
                         const y = (ghostY + row) * BLOCK_SIZE;
+
+                        // Soft glow halo behind the ghost block
+                        ctx.shadowColor = currentPiece.color;
+                        ctx.shadowBlur = 10;
+
+                        // Fill with a subtle gradient matching piece color
+                        const grd = ctx.createLinearGradient(x, y, x + BLOCK_SIZE, y + BLOCK_SIZE);
+                        grd.addColorStop(0, currentPiece.glowBase + (pulseAlpha * 0.4) + ')');
+                        grd.addColorStop(1, currentPiece.glowBase + (pulseAlpha * 0.1) + ')');
+                        ctx.fillStyle = grd;
+                        ctx.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+
+                        // Dashed neon border
+                        ctx.shadowBlur = 0;
                         ctx.strokeStyle = currentPiece.color;
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.lineWidth = 1.2;
+                        ctx.globalAlpha = pulseAlpha + 0.15;
+                        ctx.setLineDash([4, 3]);
+                        ctx.strokeRect(x + 1.5, y + 1.5, BLOCK_SIZE - 3, BLOCK_SIZE - 3);
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 1;
                     }
                 }
             }
+
             ctx.restore();
         }
 
