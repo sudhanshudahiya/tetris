@@ -148,6 +148,40 @@
             text-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
         }
 
+        /* Next Piece Preview Panel */
+        .next-piece-panel {
+            background: rgba(0, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .next-piece-panel h3 {
+            margin-bottom: 12px;
+            text-align: center;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+            letter-spacing: 2px;
+        }
+
+        .next-piece-canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas#nextPieceCanvas {
+            display: block;
+            background: rgba(0, 0, 8, 0.95);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 6px;
+            box-shadow:
+                0 0 10px rgba(0, 255, 255, 0.15),
+                inset 0 0 15px rgba(0, 0, 0, 0.6);
+        }
+
         .controls {
             background: rgba(180, 0, 255, 0.05);
             padding: 15px;
@@ -345,6 +379,13 @@
                 <div class="score-item">
                     <span>Level:</span>
                     <span id="level">1</span>
+                </div>
+            </div>
+
+            <div class="next-piece-panel">
+                <h3>NEXT</h3>
+                <div class="next-piece-canvas-wrapper">
+                    <canvas id="nextPieceCanvas" width="120" height="120"></canvas>
                 </div>
             </div>
 
@@ -826,12 +867,16 @@
         // ============================================================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextPieceCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
         const BLOCK_SIZE = 30;
+        const NEXT_BLOCK_SIZE = 25;
         const BOARD_WIDTH = 10;
         const BOARD_HEIGHT = 20;
 
         let board = [];
         let currentPiece = null;
+        let nextPiece = null;
         let gameRunning = false;
         let gamePaused = false;
         let gameLoop = null;
@@ -913,16 +958,106 @@
             }
         }
 
-        // Create a new random piece
-        function createPiece() {
-            pieceColorIndex = Math.floor(Math.random() * PIECES.length);
+        // Create a new random piece (optionally from a specific index)
+        function createPiece(index) {
+            pieceColorIndex = (index !== undefined) ? index : Math.floor(Math.random() * PIECES.length);
             return {
                 shape: JSON.parse(JSON.stringify(PIECES[pieceColorIndex])), // Deep copy
                 x: Math.floor(BOARD_WIDTH / 2) - 2,
                 y: 0,
                 color: COLORS[pieceColorIndex],
-                glowBase: GLOW_COLORS[pieceColorIndex]
+                glowBase: GLOW_COLORS[pieceColorIndex],
+                pieceIndex: pieceColorIndex
             };
+        }
+
+        // Spawn the next piece: promote nextPiece → currentPiece, generate new nextPiece
+        function spawnPiece() {
+            if (nextPiece) {
+                currentPiece = nextPiece;
+                currentPiece.x = Math.floor(BOARD_WIDTH / 2) - 2;
+                currentPiece.y = 0;
+            } else {
+                currentPiece = createPiece();
+            }
+            nextPiece = createPiece();
+            drawNextPiece();
+        }
+
+        // Draw the next piece preview on the small canvas
+        function drawNextPiece() {
+            // Clear the preview canvas
+            nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+
+            if (!nextPiece) return;
+
+            const shape = nextPiece.shape;
+            const color = nextPiece.color;
+            const glowBase = nextPiece.glowBase;
+
+            // Calculate bounding box of the piece (trim empty rows/cols)
+            let minR = shape.length, maxR = 0, minC = shape[0].length, maxC = 0;
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] === 1) {
+                        minR = Math.min(minR, r);
+                        maxR = Math.max(maxR, r);
+                        minC = Math.min(minC, c);
+                        maxC = Math.max(maxC, c);
+                    }
+                }
+            }
+
+            const pieceW = (maxC - minC + 1) * NEXT_BLOCK_SIZE;
+            const pieceH = (maxR - minR + 1) * NEXT_BLOCK_SIZE;
+            const offsetX = (nextCanvas.width - pieceW) / 2;
+            const offsetY = (nextCanvas.height - pieceH) / 2;
+
+            // Draw each block of the next piece
+            for (let r = minR; r <= maxR; r++) {
+                for (let c = minC; c <= maxC; c++) {
+                    if (shape[r][c] === 1) {
+                        const x = offsetX + (c - minC) * NEXT_BLOCK_SIZE;
+                        const y = offsetY + (r - minR) * NEXT_BLOCK_SIZE;
+                        drawNeonBlockOnCtx(nextCtx, x, y, NEXT_BLOCK_SIZE, color, glowBase);
+                    }
+                }
+            }
+        }
+
+        // Draw a neon block on any given canvas context
+        function drawNeonBlockOnCtx(targetCtx, x, y, blockSize, color, glowBase, alpha = 1) {
+            const glow = glowBase || 'rgba(255,255,255,';
+
+            // Shadow/glow behind the block
+            targetCtx.save();
+            targetCtx.shadowColor = color;
+            targetCtx.shadowBlur = 12;
+            targetCtx.fillStyle = color;
+            targetCtx.globalAlpha = alpha * 0.25;
+            targetCtx.fillRect(x + 1, y + 1, blockSize - 2, blockSize - 2);
+            targetCtx.restore();
+
+            // Main block face
+            const grad = targetCtx.createLinearGradient(x, y, x + blockSize, y + blockSize);
+            grad.addColorStop(0, glow + (alpha * 0.35) + ')');
+            grad.addColorStop(1, glow + (alpha * 0.1) + ')');
+            targetCtx.fillStyle = grad;
+            targetCtx.fillRect(x + 1, y + 1, blockSize - 2, blockSize - 2);
+
+            // Bright border (neon edge)
+            targetCtx.strokeStyle = color;
+            targetCtx.lineWidth = 1.5;
+            targetCtx.globalAlpha = alpha;
+            targetCtx.strokeRect(x + 0.75, y + 0.75, blockSize - 1.5, blockSize - 1.5);
+
+            // Top-left inner highlight
+            targetCtx.fillStyle = `rgba(255,255,255,${alpha * 0.35})`;
+            targetCtx.fillRect(x + 3, y + 3, blockSize - 8, 2);
+            targetCtx.fillRect(x + 3, y + 3, 2, blockSize - 8);
+
+            targetCtx.globalAlpha = 1;
         }
 
         // Check if piece can be placed at position
@@ -1007,8 +1142,8 @@
             // Check for completed lines
             clearLines();
 
-            // Create new piece
-            currentPiece = createPiece();
+            // Promote next piece to current, generate new next piece
+            spawnPiece();
 
             // Check game over
             if (!isValidMove(currentPiece, 0, 0)) {
@@ -1214,7 +1349,8 @@
             if (gameRunning) return;
 
             initBoard();
-            currentPiece = createPiece();
+            nextPiece = null;
+            spawnPiece();
             gameRunning = true;
             gamePaused = false;
             score = 0;
@@ -1257,6 +1393,11 @@
             ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawBoardGrid();
+
+            // Clear next piece preview
+            nextPiece = null;
+            nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
         }
 
         function gameOver() {
