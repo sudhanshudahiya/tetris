@@ -58,7 +58,15 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // Next piece preview feature
+        { name: 'Next piece preview canvas', test: () => content.includes('nextPieceCanvas') && content.includes('<canvas') },
+        { name: 'Next piece variable', test: () => content.includes('nextPiece') && content.includes('let nextPiece') },
+        { name: 'Draw next piece function', test: () => content.includes('drawNextPiece') },
+        { name: 'Next piece panel UI', test: () => content.includes('next-piece-panel') && content.includes('NEXT') },
+        { name: 'Next piece initialized on start', test: () => content.includes('nextPiece = createPiece()') },
+        { name: 'Next piece used on place', test: () => content.includes('currentPiece = nextPiece') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
