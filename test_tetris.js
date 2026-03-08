@@ -58,7 +58,28 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') }
+        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+
+        // Ghost piece (drop shadow projection)
+        { name: 'Ghost piece function exists', test: () => content.includes('function drawGhost()') },
+        { name: 'Ghost piece called in drawBoard', test: () => content.includes('drawGhost()') && content.includes('// Draw ghost piece') },
+        { name: 'Ghost piece checks gameRunning before drawing', test: () => content.includes('!gameRunning') && content.includes('function drawGhost') },
+        { name: 'Ghost piece uses isValidMove for projection', test: () => {
+            const ghostFn = content.substring(content.indexOf('function drawGhost'), content.indexOf('function drawGhost') + 500);
+            return ghostFn.includes('isValidMove');
+        }},
+        { name: 'Ghost piece disappears on game over (currentPiece cleared)', test: () => {
+            const gameOverFn = content.substring(content.indexOf('function gameOver'), content.indexOf('function gameOver') + 500);
+            return gameOverFn.includes('currentPiece = null');
+        }},
+        { name: 'Ghost piece disappears on restart (currentPiece cleared)', test: () => {
+            const restartFn = content.substring(content.indexOf('function restartGame'), content.indexOf('function restartGame') + 500);
+            return restartFn.includes('currentPiece = null');
+        }},
+        { name: 'Ghost piece renders with transparency', test: () => {
+            const ghostFn = content.substring(content.indexOf('function drawGhost'), content.indexOf('function drawGhost') + 500);
+            return ghostFn.includes('globalAlpha') && ghostFn.includes('0.2');
+        }}
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');

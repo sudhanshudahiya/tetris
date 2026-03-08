@@ -1072,7 +1072,7 @@
 
         // Draw ghost piece (landing preview)
         function drawGhost() {
-            if (!currentPiece) return;
+            if (!currentPiece || !gameRunning) return;
             let ghostY = currentPiece.y;
             while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
                 ghostY++;
@@ -1245,6 +1245,7 @@
         function restartGame() {
             gameRunning = false;
             gamePaused = false;
+            currentPiece = null; // Clear active piece so ghost disappears
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);
             }
@@ -1262,6 +1263,7 @@
         function gameOver() {
             gameRunning = false;
             gamePaused = false;
+            currentPiece = null; // Clear active piece so ghost disappears
 
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalLines').textContent = lines;
