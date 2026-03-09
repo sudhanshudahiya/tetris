@@ -60,6 +60,76 @@ function testTetrisRequirements() {
         // Responsive design
         { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
 
+        // =====================================================
+        // NEXT PIECE PREVIEW TESTS
+        // =====================================================
+
+        // Next piece preview canvas exists
+        { name: 'Next piece preview canvas', test: () => content.includes('nextPieceCanvas') && content.includes('<canvas id="nextPieceCanvas"') },
+
+        // Next piece preview panel UI
+        { name: 'Next piece preview panel', test: () => content.includes('next-piece-panel') && content.includes('NEXT') },
+
+        // Next piece state variable
+        { name: 'Next piece state variable', test: () => content.includes('let nextPiece') },
+
+        // Next piece drawing function
+        { name: 'drawNextPiece function', test: () => content.includes('function drawNextPiece') },
+
+        // Next piece is generated on createPiece
+        { name: 'Next piece queue in createPiece', test: () => content.includes('nextPiece = generateRandomPiece()') },
+
+        // generateRandomPiece helper function
+        { name: 'generateRandomPiece function', test: () => content.includes('function generateRandomPiece') },
+
+        // Next piece canvas context
+        { name: 'Next piece canvas context', test: () => content.includes('nextCtx') && content.includes("nextCanvas.getContext('2d')") },
+
+        // Next piece block size constant
+        { name: 'Next piece block size', test: () => content.includes('NEXT_BLOCK_SIZE') },
+
+        // Next piece centering logic (calculates bounding box)
+        { name: 'Next piece centering', test: () => content.includes('minR') && content.includes('maxR') && content.includes('minC') && content.includes('maxC') },
+
+        // Next piece reset on restart
+        { name: 'Next piece reset on restart', test: () => {
+            // Check that restartGame resets nextPiece
+            const restartIdx = content.indexOf('function restartGame');
+            const restartEnd = content.indexOf('function gameOver');
+            const restartBody = content.substring(restartIdx, restartEnd);
+            return restartBody.includes('nextPiece = null');
+        }},
+
+        // Next piece reset on startGame
+        { name: 'Next piece reset on start', test: () => {
+            const startIdx = content.indexOf('function startGame');
+            const startEnd = content.indexOf('function pauseGame');
+            const startBody = content.substring(startIdx, startEnd);
+            return startBody.includes('nextPiece = null');
+        }},
+
+        // Next piece CSS styling
+        { name: 'Next piece panel styling', test: () => content.includes('.next-piece-panel') && content.includes('.next-piece-canvas-wrapper') },
+
+        // Next piece neon rendering (glow effect on preview)
+        { name: 'Next piece neon glow rendering', test: () => {
+            const fnIdx = content.indexOf('function drawNextPiece');
+            const fnEnd = content.indexOf('// Place piece on board');
+            const fnBody = content.substring(fnIdx, fnEnd);
+            return fnBody.includes('shadowColor') && fnBody.includes('shadowBlur');
+        }},
+
+        // pieceIndex is tracked on pieces
+        { name: 'Piece index tracking', test: () => content.includes('pieceIndex') },
+
+        // Next piece is used when available in createPiece
+        { name: 'Next piece consumed in createPiece', test: () => {
+            const fnIdx = content.indexOf('function createPiece');
+            const fnEnd = content.indexOf('// Check if piece can be placed');
+            const fnBody = content.substring(fnIdx, fnEnd);
+            return fnBody.includes('if (nextPiece)') && fnBody.includes('piece = nextPiece');
+        }},
+
         // ── Touch / Swipe Controls ──────────────────────────────
         // Touch event listeners registered on canvas
         { name: 'Touch event: touchstart listener', test: () => content.includes('touchstart') && content.includes('handleTouchStart') },
@@ -98,7 +168,7 @@ function testTetrisRequirements() {
         { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') }
     ];
 
-    console.log('🎮 Testing Tetris Game Requirements...\n');
+    console.log('Testing Tetris Game Requirements...\n');
 
     let passed = 0;
     let failed = 0;
@@ -106,25 +176,26 @@ function testTetrisRequirements() {
     tests.forEach(test => {
         try {
             if (test.test()) {
-                console.log(`✅ ${test.name}`);
+                console.log(`  PASS: ${test.name}`);
                 passed++;
             } else {
-                console.log(`❌ ${test.name}`);
+                console.log(`  FAIL: ${test.name}`);
                 failed++;
             }
         } catch (error) {
-            console.log(`❌ ${test.name} - Error: ${error.message}`);
+            console.log(`  FAIL: ${test.name} - Error: ${error.message}`);
             failed++;
         }
     });
 
-    console.log(`\n📊 Test Results: ${passed} passed, ${failed} failed`);
+    console.log(`\nTest Results: ${passed} passed, ${failed} failed out of ${passed + failed} total`);
 
     if (failed === 0) {
-        console.log('🎉 All requirements implemented successfully!');
+        console.log('All requirements implemented successfully!');
         return true;
     } else {
-        console.log('⚠️  Some requirements may be missing or need attention.');
+        console.log('Some requirements may be missing or need attention.');
+        process.exit(1);
         return false;
     }
 }
