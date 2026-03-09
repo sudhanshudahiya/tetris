@@ -870,6 +870,8 @@
         // Line-clear animation state
         let clearingRows = [];              // row indices currently being cleared
         let clearAnimationStart = 0;        // timestamp when clear animation began
+        let clearingStartTime = 0;          // alias timestamp for animation tracking
+        let isClearing = false;             // flag indicating clearing in progress
         const CLEAR_ANIMATION_DURATION = 400; // ms for the flash effect
 
         // Tetris piece shapes
@@ -1038,6 +1040,12 @@
             // Detect completed lines (starts animation if any found)
             clearLines();
 
+            // If clearing animation started, defer new piece creation
+            if (isClearing) {
+                currentPiece = null;
+                return;
+            }
+
             // If no lines to clear, spawn next piece immediately
             if (clearingRows.length === 0) {
                 spawnNextPiece();
@@ -1054,7 +1062,7 @@
             }
         }
 
-        // Detect completed lines and begin clear animation
+        // Detect completed lines and begin clear/flash animation
         function clearLines() {
             clearingRows = [];
 
@@ -1074,6 +1082,39 @@
 
             if (clearingRows.length > 0) {
                 clearAnimationStart = performance.now();
+                isClearing = true;
+                clearingStartTime = performance.now();
+            }
+        }
+
+        // Finish clearing after flash animation completes
+        function finishClearing() {
+            // Sort descending so splicing doesn't shift indices
+            clearingRows.sort((a, b) => b - a);
+            const linesCleared = clearingRows.length;
+
+            for (const row of clearingRows) {
+                board.splice(row, 1);
+                board.unshift(new Array(BOARD_WIDTH).fill(0));
+            }
+
+            if (linesCleared > 0) {
+                const lineValues = [0, 40, 100, 300, 1200];
+                score += lineValues[linesCleared] * level;
+                lines += linesCleared;
+                level = Math.floor(lines / 10) + 1;
+                updateDisplay();
+            }
+
+            clearingRows = [];
+            isClearing = false;
+
+            // Create new piece after animation
+            currentPiece = createPiece();
+
+            // Check game over
+            if (!isValidMove(currentPiece, 0, 0)) {
+                gameOver();
             }
         }
 
@@ -1101,6 +1142,7 @@
             // Reset clearing state
             clearingRows = [];
             clearAnimationStart = 0;
+            isClearing = false;
         }
 
         // Draw grid lines on board
@@ -1166,13 +1208,20 @@
             }
 
             for (let row = 0; row < BOARD_HEIGHT; row++) {
+                const isClearingRow = clearingRows.includes(row);
                 for (let col = 0; col < BOARD_WIDTH; col++) {
                     if (board[row][col] !== 0) {
                         const cell = board[row][col];
 
-                        if (isClearing && clearingRows.includes(row)) {
-                            // Flash effect: draw block with pulsing white overlay
-                            drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, cell.color, cell.glow);
+                        if (isClearingRow && clearingRows.includes(row)) {
+                            // Flash effect: oscillating alpha with bright white/cyan glow
+                            const elapsed = performance.now() - clearingStartTime;
+                            const progress = elapsed / CLEAR_ANIMATION_DURATION;
+                            // Oscillate rapidly (8 Hz flash) with decreasing intensity
+                            const flash = Math.abs(Math.sin(progress * Math.PI * 8));
+                            const alpha = flash * (1 - progress * 0.5);
+                            drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, '#ffffff', 'rgba(0,255,255,', alpha);
+                            // Additional white overlay pulse
                             ctx.save();
                             ctx.globalAlpha = Math.abs(flashAlpha) * 0.8;
                             ctx.fillStyle = '#ffffff';
@@ -1218,11 +1267,14 @@
 
             // If rows are being cleared, pause piece drops and run animation
             if (clearingRows.length > 0) {
-                const elapsed = time - clearAnimationStart;
-                if (elapsed >= CLEAR_ANIMATION_DURATION) {
-                    finishClearLines();
-                    spawnNextPiece();
-                    dropTime = 0;
+                if (isClearing) {
+                    const elapsed = performance.now() - clearingStartTime;
+                    if (elapsed >= CLEAR_ANIMATION_DURATION) {
+                        finishClearLines();
+                        spawnNextPiece();
+                        dropTime = 0;
+                    }
+                }
                 }
                 drawBoard();
                 gameLoop = requestAnimationFrame(gameStep);
@@ -1254,7 +1306,7 @@
                 return;
             }
 
-            if (!gameRunning || gamePaused || clearingRows.length > 0) return;
+            if (!gameRunning || gamePaused || clearingRows.length > 0 || isClearing) return;
 
             switch (e.key) {
                 case 'ArrowLeft':
@@ -1351,8 +1403,8 @@
 
                 clearSoftDrop();
 
-                // Ignore if game isn't active
-                if (!gameRunning || gamePaused) return;
+                // Ignore if game isn't active or clearing animation in progress
+                if (!gameRunning || gamePaused || isClearing) return;
 
                 // ── TAP → Rotate ────────────────────────────────
                 if (distance < TAP_MAX_DISTANCE && dt < SWIPE_MAX_TIME) {
@@ -1454,6 +1506,7 @@
             lastTime = 0;
             clearingRows = [];
             clearAnimationStart = 0;
+            isClearing = false;
 
             updateDisplay();
             document.getElementById('gameOverModal').style.display = 'none';
@@ -1479,6 +1532,7 @@
             gamePaused = false;
             clearingRows = [];
             clearAnimationStart = 0;
+            isClearing = false;
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);
             }
