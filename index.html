@@ -867,6 +867,12 @@
         let dropTime = 0;
         let lastTime = 0;
 
+        // Line-clear flash animation state
+        let clearingRows = [];
+        let clearingStartTime = 0;
+        let isClearing = false;
+        const CLEAR_ANIMATION_DURATION = 500; // ms
+
         // Tetris piece shapes
         const PIECES = [
             // I-piece
@@ -1030,10 +1036,16 @@
                 }
             }
 
-            // Check for completed lines
+            // Check for completed lines (starts animation if any found)
             clearLines();
 
-            // Create new piece
+            // If clearing animation started, defer new piece creation
+            if (isClearing) {
+                currentPiece = null;
+                return;
+            }
+
+            // No lines to clear — create new piece immediately
             currentPiece = createPiece();
 
             // Check game over
@@ -1042,9 +1054,9 @@
             }
         }
 
-        // Clear completed lines
+        // Detect completed lines and start flash animation
         function clearLines() {
-            let linesCleared = 0;
+            clearingRows = [];
 
             for (let row = BOARD_HEIGHT - 1; row >= 0; row--) {
                 let isComplete = true;
@@ -1056,25 +1068,44 @@
                 }
 
                 if (isComplete) {
-                    // Remove completed line
-                    board.splice(row, 1);
-                    // Add empty line at top
-                    board.unshift(new Array(BOARD_WIDTH).fill(0));
-                    linesCleared++;
-                    row++; // Check this row again
+                    clearingRows.push(row);
                 }
             }
 
+            if (clearingRows.length > 0) {
+                isClearing = true;
+                clearingStartTime = performance.now();
+            }
+        }
+
+        // Finish clearing after flash animation completes
+        function finishClearing() {
+            // Sort descending so splicing doesn't shift indices
+            clearingRows.sort((a, b) => b - a);
+            const linesCleared = clearingRows.length;
+
+            for (const row of clearingRows) {
+                board.splice(row, 1);
+                board.unshift(new Array(BOARD_WIDTH).fill(0));
+            }
+
             if (linesCleared > 0) {
-                // Update score
                 const lineValues = [0, 40, 100, 300, 1200];
                 score += lineValues[linesCleared] * level;
                 lines += linesCleared;
-
-                // Level up every 10 lines
                 level = Math.floor(lines / 10) + 1;
-
                 updateDisplay();
+            }
+
+            clearingRows = [];
+            isClearing = false;
+
+            // Create new piece after animation
+            currentPiece = createPiece();
+
+            // Check game over
+            if (!isValidMove(currentPiece, 0, 0)) {
+                gameOver();
             }
         }
 
@@ -1132,10 +1163,21 @@
 
             // Draw placed pieces
             for (let row = 0; row < BOARD_HEIGHT; row++) {
+                const isClearingRow = clearingRows.includes(row);
                 for (let col = 0; col < BOARD_WIDTH; col++) {
                     if (board[row][col] !== 0) {
-                        const cell = board[row][col];
-                        drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, cell.color, cell.glow);
+                        if (isClearingRow) {
+                            // Flash effect: oscillating alpha with bright white/cyan
+                            const elapsed = performance.now() - clearingStartTime;
+                            const progress = elapsed / CLEAR_ANIMATION_DURATION;
+                            // Oscillate rapidly (8 Hz flash) with decreasing intensity
+                            const flash = Math.abs(Math.sin(progress * Math.PI * 8));
+                            const alpha = flash * (1 - progress * 0.5);
+                            drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, '#ffffff', 'rgba(0,255,255,', alpha);
+                        } else {
+                            const cell = board[row][col];
+                            drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, cell.color, cell.glow);
+                        }
                     }
                 }
             }
@@ -1170,6 +1212,18 @@
 
             const deltaTime = time - lastTime;
             lastTime = time;
+
+            // Handle line-clear animation
+            if (isClearing) {
+                const elapsed = performance.now() - clearingStartTime;
+                if (elapsed >= CLEAR_ANIMATION_DURATION) {
+                    finishClearing();
+                }
+                drawBoard();
+                gameLoop = requestAnimationFrame(gameStep);
+                return;
+            }
+
             dropTime += deltaTime;
 
             // Drop piece based on level (faster as level increases)
@@ -1195,7 +1249,7 @@
                 return;
             }
 
-            if (!gameRunning || gamePaused) return;
+            if (!gameRunning || gamePaused || isClearing) return;
 
             switch (e.key) {
                 case 'ArrowLeft':
@@ -1292,8 +1346,8 @@
 
                 clearSoftDrop();
 
-                // Ignore if game isn't active
-                if (!gameRunning || gamePaused) return;
+                // Ignore if game isn't active or clearing animation in progress
+                if (!gameRunning || gamePaused || isClearing) return;
 
                 // ── TAP → Rotate ────────────────────────────────
                 if (distance < TAP_MAX_DISTANCE && dt < SWIPE_MAX_TIME) {
@@ -1393,6 +1447,8 @@
             level = 1;
             dropTime = 0;
             lastTime = 0;
+            clearingRows = [];
+            isClearing = false;
 
             updateDisplay();
             document.getElementById('gameOverModal').style.display = 'none';
@@ -1416,6 +1472,8 @@
         function restartGame() {
             gameRunning = false;
             gamePaused = false;
+            clearingRows = [];
+            isClearing = false;
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);
             }

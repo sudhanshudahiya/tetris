@@ -95,7 +95,43 @@ function testTetrisRequirements() {
         { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') },
 
         // Exposed for testing
-        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') }
+        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
+
+        // ── Line-Clear Flash Animation ─────────────────────────
+        // clearingRows state variable
+        { name: 'Flash: clearingRows state defined', test: () => content.includes('let clearingRows') && content.includes('[]') },
+        // isClearing flag
+        { name: 'Flash: isClearing flag defined', test: () => content.includes('let isClearing') },
+        // Animation duration constant
+        { name: 'Flash: CLEAR_ANIMATION_DURATION defined', test: () => content.includes('CLEAR_ANIMATION_DURATION') },
+        // clearingStartTime tracker
+        { name: 'Flash: clearingStartTime defined', test: () => content.includes('let clearingStartTime') },
+        // clearLines detects complete rows into clearingRows
+        { name: 'Flash: clearLines pushes to clearingRows', test: () => content.includes('clearingRows.push(row)') },
+        // clearLines starts animation (sets isClearing)
+        { name: 'Flash: clearLines sets isClearing true', test: () => content.includes('isClearing = true') },
+        // clearLines records start time
+        { name: 'Flash: clearLines records clearingStartTime', test: () => content.includes('clearingStartTime = performance.now()') },
+        // finishClearing function exists
+        { name: 'Flash: finishClearing function exists', test: () => content.includes('function finishClearing()') },
+        // finishClearing removes rows via splice
+        { name: 'Flash: finishClearing splices board rows', test: () => content.includes('board.splice(row, 1)') || content.includes('board.splice(') },
+        // finishClearing resets isClearing
+        { name: 'Flash: finishClearing resets isClearing', test: () => content.includes('isClearing = false') },
+        // drawBoard checks clearingRows for flash rendering
+        { name: 'Flash: drawBoard checks clearingRows', test: () => content.includes('clearingRows.includes(row)') },
+        // Flash uses oscillating alpha (Math.sin)
+        { name: 'Flash: oscillating alpha via Math.sin', test: () => content.includes('Math.sin') && content.includes('flash') },
+        // Flash uses white color for blocks
+        { name: 'Flash: white color for clearing blocks', test: () => content.includes("'#ffffff'") || content.includes('"#ffffff"') },
+        // Flash uses cyan glow
+        { name: 'Flash: cyan glow for clearing blocks', test: () => content.includes("rgba(0,255,255,") },
+        // gameStep handles isClearing state
+        { name: 'Flash: gameStep handles isClearing', test: () => content.includes('if (isClearing)') },
+        // gameStep calls finishClearing when animation done
+        { name: 'Flash: gameStep calls finishClearing', test: () => content.includes('finishClearing()') },
+        // placePiece defers new piece during clearing
+        { name: 'Flash: placePiece defers piece during clearing', test: () => content.includes('if (isClearing)') && content.includes('currentPiece = null') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
