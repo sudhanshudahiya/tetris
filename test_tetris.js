@@ -165,7 +165,144 @@ function testTetrisRequirements() {
         { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') },
 
         // Exposed for testing
-        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') }
+        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
+
+        // ── Line-Clear Animation (clearingRows state) ─────────────
+        // clearingRows array declared in game state
+        { name: 'clearingRows state variable declared', test: () => content.includes('let clearingRows = []') },
+
+        // clearAnimationStart timestamp for tracking animation progress
+        { name: 'clearAnimationStart timestamp declared', test: () => content.includes('let clearAnimationStart = 0') },
+
+        // CLEAR_ANIMATION_DURATION constant defined
+        { name: 'CLEAR_ANIMATION_DURATION constant defined', test: () => content.includes('CLEAR_ANIMATION_DURATION') },
+
+        // clearLines() populates clearingRows instead of splicing immediately
+        { name: 'clearLines populates clearingRows array', test: () => content.includes('clearingRows.push(row)') },
+
+        // clearLines() no longer calls board.splice directly
+        { name: 'clearLines does not splice board directly', test: () => {
+            // Extract the clearLines function body
+            const clMatch = content.match(/function clearLines\(\)\s*\{([\s\S]*?)\n        \}/);
+            return clMatch && !clMatch[1].includes('board.splice');
+        }},
+
+        // finishClearLines() function exists for deferred row removal
+        { name: 'finishClearLines function exists', test: () => content.includes('function finishClearLines()') },
+
+        // finishClearLines() performs the actual board.splice
+        { name: 'finishClearLines splices the board', test: () => {
+            const flMatch = content.match(/function finishClearLines\(\)\s*\{([\s\S]*?)\n        \}/);
+            return flMatch && flMatch[1].includes('board.splice');
+        }},
+
+        // gameStep() checks clearingRows to pause piece drops
+        { name: 'gameStep pauses drops during clearing', test: () => content.includes('clearingRows.length > 0') },
+
+        // gameStep() calls finishClearLines after animation duration
+        { name: 'gameStep calls finishClearLines after animation', test: () => {
+            const gsMatch = content.match(/function gameStep\(time\)\s*\{([\s\S]*?)\n        \}/);
+            return gsMatch && gsMatch[1].includes('finishClearLines()');
+        }},
+
+        // Flash effect rendering: white overlay on clearing rows
+        { name: 'Flash effect uses white overlay', test: () => content.includes("ctx.fillStyle = '#ffffff'") && content.includes('flashAlpha') },
+
+        // Flash uses sine-based pulsing animation
+        { name: 'Flash uses sine-based pulsing', test: () => content.includes('Math.sin') && content.includes('flashAlpha') },
+
+        // clearingRows is reset in startGame
+        { name: 'clearingRows reset in startGame', test: () => {
+            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n        \}/);
+            return sgMatch && sgMatch[1].includes('clearingRows = []');
+        }},
+
+        // clearingRows is reset in restartGame
+        { name: 'clearingRows reset in restartGame', test: () => {
+            const rgMatch = content.match(/function restartGame\(\)\s*\{([\s\S]*?)\n        \}/);
+            return rgMatch && rgMatch[1].includes('clearingRows = []');
+        }},
+
+        // Input blocked during clearing animation
+        { name: 'Keyboard input blocked during clearing', test: () => content.includes('clearingRows.length > 0') },
+
+        // spawnNextPiece extracted as separate function
+        { name: 'spawnNextPiece function exists', test: () => content.includes('function spawnNextPiece()') },
+
+        // placePiece defers spawning when clearing
+        { name: 'placePiece defers spawn during clearing', test: () => {
+            const ppMatch = content.match(/function placePiece\(\)\s*\{([\s\S]*?)\n        \}/);
+            return ppMatch && ppMatch[1].includes('clearingRows.length === 0') && ppMatch[1].includes('spawnNextPiece()');
+        }},
+
+        // ── Line-Clear Flash Animation (branch 68200bdb) ─────────────────────────
+        // clearingRows state variable
+        { name: 'Flash: clearingRows state defined', test: () => content.includes('let clearingRows') && content.includes('[]') },
+        // isClearing flag
+        { name: 'Flash: isClearing flag defined', test: () => content.includes('let isClearing') },
+        // Animation duration constant
+        { name: 'Flash: CLEAR_ANIMATION_DURATION defined', test: () => content.includes('CLEAR_ANIMATION_DURATION') },
+        // clearingStartTime tracker
+        { name: 'Flash: clearingStartTime defined', test: () => content.includes('let clearingStartTime') },
+        // clearLines detects complete rows into clearingRows
+        { name: 'Flash: clearLines pushes to clearingRows', test: () => content.includes('clearingRows.push(row)') },
+        // clearLines starts animation (sets isClearing)
+        { name: 'Flash: clearLines sets isClearing true', test: () => content.includes('isClearing = true') },
+        // clearLines records start time
+        { name: 'Flash: clearLines records clearingStartTime', test: () => content.includes('clearingStartTime = performance.now()') },
+        // finishClearing function exists
+        { name: 'Flash: finishClearing function exists', test: () => content.includes('function finishClearing()') },
+        // finishClearing removes rows via splice
+        { name: 'Flash: finishClearing splices board rows', test: () => content.includes('board.splice(row, 1)') || content.includes('board.splice(') },
+        // finishClearing resets isClearing
+        { name: 'Flash: finishClearing resets isClearing', test: () => content.includes('isClearing = false') },
+        // drawBoard checks clearingRows for flash rendering
+        { name: 'Flash: drawBoard checks clearingRows', test: () => content.includes('clearingRows.includes(row)') },
+        // Flash uses oscillating alpha (Math.sin)
+        { name: 'Flash: oscillating alpha via Math.sin', test: () => content.includes('Math.sin') && content.includes('flash') },
+        // Flash uses white color for blocks
+        { name: 'Flash: white color for clearing blocks', test: () => content.includes("'#ffffff'") || content.includes('"#ffffff"') },
+        // Flash uses cyan glow
+        { name: 'Flash: cyan glow for clearing blocks', test: () => content.includes("rgba(0,255,255,") },
+        // gameStep handles isClearing state
+        { name: 'Flash: gameStep handles isClearing', test: () => content.includes('if (isClearing)') },
+        // gameStep calls finishClearing when animation done
+        { name: 'Flash: gameStep calls finishClearing', test: () => content.includes('finishClearing()') },
+        // placePiece defers new piece during clearing
+        { name: 'Flash: placePiece defers piece during clearing', test: () => content.includes('if (isClearing)') && content.includes('currentPiece = null') },
+
+        // ── Line-Clear Flash Animation (branch d4a465b0) ────────────────────────────
+        // State variables for clearing animation
+        { name: 'Flash: clearingRows state variable', test: () => content.includes('let clearingRows = []') },
+        { name: 'Flash: isClearing state variable', test: () => content.includes('let isClearing = false') },
+        { name: 'Flash: clearAnimationStart state variable', test: () => content.includes('let clearAnimationStart = 0') },
+        { name: 'Flash: FLASH_DURATION constant defined', test: () => content.includes('FLASH_DURATION') && content.includes('400') },
+
+        // requestAnimationFrame manages flash timing in gameStep
+        { name: 'Flash: rAF drives animation during clearing', test: () => content.includes('isClearing') && content.includes('requestAnimationFrame(gameStep)') },
+        { name: 'Flash: elapsed time checked against FLASH_DURATION', test: () => content.includes('elapsed >= FLASH_DURATION') },
+
+        // Flash rendering in drawBoard
+        { name: 'Flash: white overlay rendered on clearing rows', test: () => content.includes('clearingRows.length > 0') && content.includes('rgba(255, 255, 255') },
+        { name: 'Flash: flash intensity uses sine oscillation', test: () => content.includes('Math.sin') && content.includes('flashIntensity') },
+        { name: 'Flash: flash drawn per clearing row', test: () => content.includes('for (const row of clearingRows)') && content.includes('fillRect') },
+
+        // board.splice and board.unshift in completeClear after flash
+        { name: 'Flash: board.splice in completeClear', test: () => content.includes('function completeClear') && content.includes('board.splice(row, 1)') },
+        { name: 'Flash: board.unshift in completeClear', test: () => content.includes('function completeClear') && content.includes('board.unshift') },
+
+        // clearingRows reset post-operation
+        { name: 'Flash: clearingRows reset after clear', test: () => content.includes("clearingRows = []") && content.includes("isClearing = false") },
+
+        // completeClear called after flash duration
+        { name: 'Flash: completeClear called after duration', test: () => content.includes('completeClear()') },
+
+        // Game freezes during flash (no piece drop, no input)
+        { name: 'Flash: input blocked during clearing', test: () => content.includes('isClearing') && content.includes('return') },
+        { name: 'Flash: piece not spawned during clearing', test: () => content.includes('if (!isClearing)') && content.includes('createPiece') },
+
+        // Exposed for testing
+        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') }
     ];
 
     console.log('Testing Tetris Game Requirements...\n');
