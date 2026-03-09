@@ -867,6 +867,11 @@
         let dropTime = 0;
         let lastTime = 0;
 
+        // Line-clear animation state
+        let clearingRows = [];              // row indices currently being cleared
+        let clearAnimationStart = 0;        // timestamp when clear animation began
+        const CLEAR_ANIMATION_DURATION = 400; // ms for the flash effect
+
         // Tetris piece shapes
         const PIECES = [
             // I-piece
@@ -1030,21 +1035,28 @@
                 }
             }
 
-            // Check for completed lines
+            // Detect completed lines (starts animation if any found)
             clearLines();
 
-            // Create new piece
+            // If no lines to clear, spawn next piece immediately
+            if (clearingRows.length === 0) {
+                spawnNextPiece();
+            }
+            // Otherwise, gameStep will call spawnNextPiece after animation finishes
+        }
+
+        // Spawn the next piece and check for game over
+        function spawnNextPiece() {
             currentPiece = createPiece();
 
-            // Check game over
             if (!isValidMove(currentPiece, 0, 0)) {
                 gameOver();
             }
         }
 
-        // Clear completed lines
+        // Detect completed lines and begin clear animation
         function clearLines() {
-            let linesCleared = 0;
+            clearingRows = [];
 
             for (let row = BOARD_HEIGHT - 1; row >= 0; row--) {
                 let isComplete = true;
@@ -1056,26 +1068,39 @@
                 }
 
                 if (isComplete) {
-                    // Remove completed line
-                    board.splice(row, 1);
-                    // Add empty line at top
-                    board.unshift(new Array(BOARD_WIDTH).fill(0));
-                    linesCleared++;
-                    row++; // Check this row again
+                    clearingRows.push(row);
                 }
             }
 
-            if (linesCleared > 0) {
-                // Update score
-                const lineValues = [0, 40, 100, 300, 1200];
-                score += lineValues[linesCleared] * level;
-                lines += linesCleared;
-
-                // Level up every 10 lines
-                level = Math.floor(lines / 10) + 1;
-
-                updateDisplay();
+            if (clearingRows.length > 0) {
+                clearAnimationStart = performance.now();
             }
+        }
+
+        // Finish clearing: splice rows, update score, spawn next piece
+        function finishClearLines() {
+            const linesCleared = clearingRows.length;
+
+            // Sort descending so splicing from bottom up doesn't shift indices
+            clearingRows.sort((a, b) => b - a);
+            for (const row of clearingRows) {
+                board.splice(row, 1);
+                board.unshift(new Array(BOARD_WIDTH).fill(0));
+            }
+
+            // Update score
+            const lineValues = [0, 40, 100, 300, 1200];
+            score += lineValues[linesCleared] * level;
+            lines += linesCleared;
+
+            // Level up every 10 lines
+            level = Math.floor(lines / 10) + 1;
+
+            updateDisplay();
+
+            // Reset clearing state
+            clearingRows = [];
+            clearAnimationStart = 0;
         }
 
         // Draw grid lines on board
@@ -1130,12 +1155,32 @@
             // Draw subtle grid
             drawBoardGrid();
 
-            // Draw placed pieces
+            // Draw placed pieces (with flash effect for clearing rows)
+            const isClearing = clearingRows.length > 0;
+            let flashAlpha = 0;
+            if (isClearing) {
+                const elapsed = performance.now() - clearAnimationStart;
+                const progress = Math.min(elapsed / CLEAR_ANIMATION_DURATION, 1);
+                // Pulsing flash: rapid sine oscillation that fades out
+                flashAlpha = Math.sin(progress * Math.PI * 4) * (1 - progress);
+            }
+
             for (let row = 0; row < BOARD_HEIGHT; row++) {
                 for (let col = 0; col < BOARD_WIDTH; col++) {
                     if (board[row][col] !== 0) {
                         const cell = board[row][col];
-                        drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, cell.color, cell.glow);
+
+                        if (isClearing && clearingRows.includes(row)) {
+                            // Flash effect: draw block with pulsing white overlay
+                            drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, cell.color, cell.glow);
+                            ctx.save();
+                            ctx.globalAlpha = Math.abs(flashAlpha) * 0.8;
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                            ctx.restore();
+                        } else {
+                            drawNeonBlock(col * BLOCK_SIZE, row * BLOCK_SIZE, cell.color, cell.glow);
+                        }
                     }
                 }
             }
@@ -1170,6 +1215,20 @@
 
             const deltaTime = time - lastTime;
             lastTime = time;
+
+            // If rows are being cleared, pause piece drops and run animation
+            if (clearingRows.length > 0) {
+                const elapsed = time - clearAnimationStart;
+                if (elapsed >= CLEAR_ANIMATION_DURATION) {
+                    finishClearLines();
+                    spawnNextPiece();
+                    dropTime = 0;
+                }
+                drawBoard();
+                gameLoop = requestAnimationFrame(gameStep);
+                return;
+            }
+
             dropTime += deltaTime;
 
             // Drop piece based on level (faster as level increases)
@@ -1195,7 +1254,7 @@
                 return;
             }
 
-            if (!gameRunning || gamePaused) return;
+            if (!gameRunning || gamePaused || clearingRows.length > 0) return;
 
             switch (e.key) {
                 case 'ArrowLeft':
@@ -1393,6 +1452,8 @@
             level = 1;
             dropTime = 0;
             lastTime = 0;
+            clearingRows = [];
+            clearAnimationStart = 0;
 
             updateDisplay();
             document.getElementById('gameOverModal').style.display = 'none';
@@ -1416,6 +1477,8 @@
         function restartGame() {
             gameRunning = false;
             gamePaused = false;
+            clearingRows = [];
+            clearAnimationStart = 0;
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);
             }

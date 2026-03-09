@@ -95,7 +95,75 @@ function testTetrisRequirements() {
         { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') },
 
         // Exposed for testing
-        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') }
+        { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
+
+        // ── Line-Clear Animation (clearingRows state) ─────────────
+        // clearingRows array declared in game state
+        { name: 'clearingRows state variable declared', test: () => content.includes('let clearingRows = []') },
+
+        // clearAnimationStart timestamp for tracking animation progress
+        { name: 'clearAnimationStart timestamp declared', test: () => content.includes('let clearAnimationStart = 0') },
+
+        // CLEAR_ANIMATION_DURATION constant defined
+        { name: 'CLEAR_ANIMATION_DURATION constant defined', test: () => content.includes('CLEAR_ANIMATION_DURATION') },
+
+        // clearLines() populates clearingRows instead of splicing immediately
+        { name: 'clearLines populates clearingRows array', test: () => content.includes('clearingRows.push(row)') },
+
+        // clearLines() no longer calls board.splice directly
+        { name: 'clearLines does not splice board directly', test: () => {
+            // Extract the clearLines function body
+            const clMatch = content.match(/function clearLines\(\)\s*\{([\s\S]*?)\n        \}/);
+            return clMatch && !clMatch[1].includes('board.splice');
+        }},
+
+        // finishClearLines() function exists for deferred row removal
+        { name: 'finishClearLines function exists', test: () => content.includes('function finishClearLines()') },
+
+        // finishClearLines() performs the actual board.splice
+        { name: 'finishClearLines splices the board', test: () => {
+            const flMatch = content.match(/function finishClearLines\(\)\s*\{([\s\S]*?)\n        \}/);
+            return flMatch && flMatch[1].includes('board.splice');
+        }},
+
+        // gameStep() checks clearingRows to pause piece drops
+        { name: 'gameStep pauses drops during clearing', test: () => content.includes('clearingRows.length > 0') },
+
+        // gameStep() calls finishClearLines after animation duration
+        { name: 'gameStep calls finishClearLines after animation', test: () => {
+            const gsMatch = content.match(/function gameStep\(time\)\s*\{([\s\S]*?)\n        \}/);
+            return gsMatch && gsMatch[1].includes('finishClearLines()');
+        }},
+
+        // Flash effect rendering: white overlay on clearing rows
+        { name: 'Flash effect uses white overlay', test: () => content.includes("ctx.fillStyle = '#ffffff'") && content.includes('flashAlpha') },
+
+        // Flash uses sine-based pulsing animation
+        { name: 'Flash uses sine-based pulsing', test: () => content.includes('Math.sin') && content.includes('flashAlpha') },
+
+        // clearingRows is reset in startGame
+        { name: 'clearingRows reset in startGame', test: () => {
+            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n        \}/);
+            return sgMatch && sgMatch[1].includes('clearingRows = []');
+        }},
+
+        // clearingRows is reset in restartGame
+        { name: 'clearingRows reset in restartGame', test: () => {
+            const rgMatch = content.match(/function restartGame\(\)\s*\{([\s\S]*?)\n        \}/);
+            return rgMatch && rgMatch[1].includes('clearingRows = []');
+        }},
+
+        // Input blocked during clearing animation
+        { name: 'Keyboard input blocked during clearing', test: () => content.includes('clearingRows.length > 0') },
+
+        // spawnNextPiece extracted as separate function
+        { name: 'spawnNextPiece function exists', test: () => content.includes('function spawnNextPiece()') },
+
+        // placePiece defers spawning when clearing
+        { name: 'placePiece defers spawn during clearing', test: () => {
+            const ppMatch = content.match(/function placePiece\(\)\s*\{([\s\S]*?)\n        \}/);
+            return ppMatch && ppMatch[1].includes('clearingRows.length === 0') && ppMatch[1].includes('spawnNextPiece()');
+        }}
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
