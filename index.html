@@ -873,6 +873,7 @@
         let clearingStartTime = 0;          // alias timestamp for animation tracking
         let isClearing = false;             // flag indicating clearing in progress
         const CLEAR_ANIMATION_DURATION = 400; // ms for the flash effect
+        const FLASH_DURATION = 400; // ms for flash effect
 
         // Tetris piece shapes
         const PIECES = [
@@ -1046,9 +1047,11 @@
                 return;
             }
 
-            // If no lines to clear, spawn next piece immediately
-            if (clearingRows.length === 0) {
-                spawnNextPiece();
+            // Only spawn next piece immediately if not in clearing animation
+            if (!isClearing) {
+                if (clearingRows.length === 0) {
+                    spawnNextPiece();
+                }
             }
             // Otherwise, gameStep will call spawnNextPiece after animation finishes
         }
@@ -1118,6 +1121,37 @@
             }
         }
 
+        // Complete line clear after flash animation finishes
+        function completeClear() {
+            const linesCleared = clearingRows.length;
+
+            // Sort descending so we splice from bottom-up correctly
+            clearingRows.sort((a, b) => b - a);
+
+            for (const row of clearingRows) {
+                board.splice(row, 1);
+                board.unshift(new Array(BOARD_WIDTH).fill(0));
+            }
+
+            // Reset clearing state
+            clearingRows = [];
+            isClearing = false;
+
+            if (linesCleared > 0) {
+                const lineValues = [0, 40, 100, 300, 1200];
+                score += lineValues[linesCleared] * level;
+                lines += linesCleared;
+                level = Math.floor(lines / 10) + 1;
+                updateDisplay();
+            }
+
+            // Spawn next piece now that clearing is done
+            currentPiece = createPiece();
+            if (!isValidMove(currentPiece, 0, 0)) {
+                gameOver();
+            }
+        }
+
         // Finish clearing: splice rows, update score, spawn next piece
         function finishClearLines() {
             const linesCleared = clearingRows.length;
@@ -1144,6 +1178,15 @@
             clearAnimationStart = 0;
             isClearing = false;
         }
+
+        // Expose flash animation state for testing
+        window._flashAnimation = {
+            get clearingRows() { return clearingRows; },
+            get isClearing() { return isClearing; },
+            get clearAnimationStart() { return clearAnimationStart; },
+            FLASH_DURATION,
+            completeClear
+        };
 
         // Draw grid lines on board
         function drawBoardGrid() {
@@ -1234,6 +1277,19 @@
                 }
             }
 
+            // Draw flash effect on clearing rows
+            if (clearingRows.length > 0) {
+                const elapsed = performance.now() - clearAnimationStart;
+                const progress = Math.min(elapsed / FLASH_DURATION, 1);
+                // Pulsing flash: rapid sine oscillation that fades out
+                const flashIntensity = Math.abs(Math.sin(progress * Math.PI * 3)) * (1 - progress);
+
+                for (const row of clearingRows) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${flashIntensity * 0.85})`;
+                    ctx.fillRect(0, row * BLOCK_SIZE, BOARD_WIDTH * BLOCK_SIZE, BLOCK_SIZE);
+                }
+            }
+
             // Draw ghost piece
             drawGhost();
 
@@ -1261,6 +1317,17 @@
         // Game loop
         function gameStep(time) {
             if (!gameRunning || gamePaused) return;
+
+            // During clearing animation, keep rendering but freeze game logic
+            if (isClearing) {
+                const elapsed = time - clearAnimationStart;
+                if (elapsed >= FLASH_DURATION) {
+                    completeClear();
+                }
+                drawBoard();
+                gameLoop = requestAnimationFrame(gameStep);
+                return;
+            }
 
             const deltaTime = time - lastTime;
             lastTime = time;

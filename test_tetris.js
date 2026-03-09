@@ -165,7 +165,7 @@ function testTetrisRequirements() {
             return ppMatch && ppMatch[1].includes('clearingRows.length === 0') && ppMatch[1].includes('spawnNextPiece()');
         }},
 
-        // ── Line-Clear Flash Animation ─────────────────────────
+        // ── Line-Clear Flash Animation (branch 68200bdb) ─────────────────────────
         // clearingRows state variable
         { name: 'Flash: clearingRows state defined', test: () => content.includes('let clearingRows') && content.includes('[]') },
         // isClearing flag
@@ -199,7 +199,40 @@ function testTetrisRequirements() {
         // gameStep calls finishClearing when animation done
         { name: 'Flash: gameStep calls finishClearing', test: () => content.includes('finishClearing()') },
         // placePiece defers new piece during clearing
-        { name: 'Flash: placePiece defers piece during clearing', test: () => content.includes('if (isClearing)') && content.includes('currentPiece = null') }
+        { name: 'Flash: placePiece defers piece during clearing', test: () => content.includes('if (isClearing)') && content.includes('currentPiece = null') },
+
+        // ── Line-Clear Flash Animation (branch d4a465b0) ────────────────────────────
+        // State variables for clearing animation
+        { name: 'Flash: clearingRows state variable', test: () => content.includes('let clearingRows = []') },
+        { name: 'Flash: isClearing state variable', test: () => content.includes('let isClearing = false') },
+        { name: 'Flash: clearAnimationStart state variable', test: () => content.includes('let clearAnimationStart = 0') },
+        { name: 'Flash: FLASH_DURATION constant defined', test: () => content.includes('FLASH_DURATION') && content.includes('400') },
+
+        // requestAnimationFrame manages flash timing in gameStep
+        { name: 'Flash: rAF drives animation during clearing', test: () => content.includes('isClearing') && content.includes('requestAnimationFrame(gameStep)') },
+        { name: 'Flash: elapsed time checked against FLASH_DURATION', test: () => content.includes('elapsed >= FLASH_DURATION') },
+
+        // Flash rendering in drawBoard
+        { name: 'Flash: white overlay rendered on clearing rows', test: () => content.includes('clearingRows.length > 0') && content.includes('rgba(255, 255, 255') },
+        { name: 'Flash: flash intensity uses sine oscillation', test: () => content.includes('Math.sin') && content.includes('flashIntensity') },
+        { name: 'Flash: flash drawn per clearing row', test: () => content.includes('for (const row of clearingRows)') && content.includes('fillRect') },
+
+        // board.splice and board.unshift in completeClear after flash
+        { name: 'Flash: board.splice in completeClear', test: () => content.includes('function completeClear') && content.includes('board.splice(row, 1)') },
+        { name: 'Flash: board.unshift in completeClear', test: () => content.includes('function completeClear') && content.includes('board.unshift') },
+
+        // clearingRows reset post-operation
+        { name: 'Flash: clearingRows reset after clear', test: () => content.includes("clearingRows = []") && content.includes("isClearing = false") },
+
+        // completeClear called after flash duration
+        { name: 'Flash: completeClear called after duration', test: () => content.includes('completeClear()') },
+
+        // Game freezes during flash (no piece drop, no input)
+        { name: 'Flash: input blocked during clearing', test: () => content.includes('isClearing') && content.includes('return') },
+        { name: 'Flash: piece not spawned during clearing', test: () => content.includes('if (!isClearing)') && content.includes('createPiece') },
+
+        // Exposed for testing
+        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') }
     ];
 
     console.log('🎮 Testing Tetris Game Requirements...\n');
