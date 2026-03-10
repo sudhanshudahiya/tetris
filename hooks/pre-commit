@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Pre-commit hook: runs ESLint on staged .js and .html files.
+# Blocks the commit if ESLint reports errors.
+#
+
+# Get list of staged .js and .html files (Added, Copied, Modified)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|html)$')
+
+# If no relevant files staged, exit successfully
+if [ -z "$STAGED_FILES" ]; then
+  exit 0
+fi
+
+echo "Running ESLint on staged files..."
+echo "$STAGED_FILES"
+echo ""
+
+# Run ESLint on the staged files
+npx eslint $STAGED_FILES
+
+ESLINT_EXIT=$?
+
+if [ $ESLINT_EXIT -ne 0 ]; then
+  echo ""
+  echo "ESLint found errors. Commit blocked."
+  echo "Fix the errors above and try again."
+  exit 1
+fi
+
+exit 0
