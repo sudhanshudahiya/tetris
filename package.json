@@ -1,0 +1,21 @@
+{
+  "name": "tetris",
+  "version": "1.0.0",
+  "description": "Tetris game",
+  "main": "test_tetris.js",
+  "scripts": {
+    "lint": "eslint .",
+    "prepare": "sh scripts/install-hooks.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.3",
+    "eslint-plugin-html": "^8.1.4",
+    "globals": "^17.4.0"
+  }
+}
