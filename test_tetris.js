@@ -10,23 +10,26 @@ function testTetrisRequirements() {
     if (!fs.existsSync(htmlFile)) {
         throw new Error('index.html file not found');
     }
+    if (!fs.existsSync(gameFile)) {
+        throw new Error('game.js file not found');
+    }
 
     const htmlContent = fs.readFileSync(htmlFile, 'utf8');
-    const gameContent = fs.existsSync(gameFile) ? fs.readFileSync(gameFile, 'utf8') : '';
+    const gameContent = fs.readFileSync(gameFile, 'utf8');
     const content = htmlContent + '\n' + gameContent;
 
     const tests = [
-        // Single file requirement
-        { name: 'Single HTML file', test: () => content.includes('<!DOCTYPE html>') },
+        // HTML structure requirement
+        { name: 'Single HTML file', test: () => htmlContent.includes('<!DOCTYPE html>') },
 
         // Inline styles requirement
-        { name: 'Inline CSS styles', test: () => content.includes('<style>') && content.includes('</style>') },
+        { name: 'Inline CSS styles', test: () => htmlContent.includes('<style>') && htmlContent.includes('</style>') },
 
-        // Inline JavaScript requirement
-        { name: 'Inline JavaScript', test: () => (content.includes('<script>') || content.includes('<script src="game.js">')) && content.includes('</script>') },
+        // External JavaScript requirement (game logic extracted to game.js)
+        { name: 'External JavaScript', test: () => htmlContent.includes('<script src="game.js"') && htmlContent.includes('</script>') },
 
         // Game board rendering
-        { name: 'Game board canvas', test: () => content.includes('<canvas') && content.includes('gameCanvas') },
+        { name: 'Game board canvas', test: () => htmlContent.includes('<canvas') && htmlContent.includes('gameCanvas') },
 
         // Piece movement controls
         { name: 'Arrow key movement', test: () => content.includes('ArrowLeft') && content.includes('ArrowRight') && content.includes('ArrowDown') },
@@ -41,16 +44,16 @@ function testTetrisRequirements() {
         { name: 'Score tracking', test: () => content.includes('score') && content.includes('updateDisplay') },
 
         // Game over detection
-        { name: 'Game over detection', test: () => content.includes('gameOver') && content.includes('Game Over') },
+        { name: 'Game over detection', test: () => content.includes('gameOver') && htmlContent.includes('Game Over') },
 
         // Start/Restart buttons
-        { name: 'Start button', test: () => content.includes('startGame') && content.includes('Start Game') },
-        { name: 'Restart button', test: () => content.includes('restartGame') && content.includes('Restart') },
+        { name: 'Start button', test: () => content.includes('startGame') && htmlContent.includes('Start Game') },
+        { name: 'Restart button', test: () => content.includes('restartGame') && htmlContent.includes('Restart') },
 
         // Additional UI features
-        { name: 'Pause functionality', test: () => content.includes('pauseGame') && content.includes('Pause') },
-        { name: 'Level tracking', test: () => content.includes('level') && content.includes('Level') },
-        { name: 'Lines tracking', test: () => content.includes('lines') && content.includes('Lines') },
+        { name: 'Pause functionality', test: () => content.includes('pauseGame') && htmlContent.includes('Pause') },
+        { name: 'Level tracking', test: () => content.includes('level') && htmlContent.includes('Level') },
+        { name: 'Lines tracking', test: () => content.includes('lines') && htmlContent.includes('Lines') },
 
         // Hard drop feature
         { name: 'Hard drop (spacebar)', test: () => content.includes("' '") || content.includes("case ' '") },
@@ -62,17 +65,17 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+        { name: 'Responsive CSS', test: () => htmlContent.includes('@media') && htmlContent.includes('768px') },
 
         // =====================================================
         // NEXT PIECE PREVIEW TESTS
         // =====================================================
 
         // Next piece preview canvas exists
-        { name: 'Next piece preview canvas', test: () => content.includes('nextPieceCanvas') && content.includes('<canvas id="nextPieceCanvas"') },
+        { name: 'Next piece preview canvas', test: () => htmlContent.includes('nextPieceCanvas') && htmlContent.includes('<canvas id="nextPieceCanvas"') },
 
         // Next piece preview panel UI
-        { name: 'Next piece preview panel', test: () => content.includes('next-piece-panel') && content.includes('NEXT') },
+        { name: 'Next piece preview panel', test: () => htmlContent.includes('next-piece-panel') && htmlContent.includes('NEXT') },
 
         // Next piece state variable
         { name: 'Next piece state variable', test: () => content.includes('let nextPiece') },
@@ -113,7 +116,7 @@ function testTetrisRequirements() {
         }},
 
         // Next piece CSS styling
-        { name: 'Next piece panel styling', test: () => content.includes('.next-piece-panel') && content.includes('.next-piece-canvas-wrapper') },
+        { name: 'Next piece panel styling', test: () => htmlContent.includes('.next-piece-panel') && htmlContent.includes('.next-piece-canvas-wrapper') },
 
         // Next piece neon rendering (glow effect on preview)
         { name: 'Next piece neon glow rendering', test: () => {
@@ -159,14 +162,14 @@ function testTetrisRequirements() {
         { name: 'preventDefault on touch events', test: () => content.includes('e.preventDefault()') },
 
         // CSS touch-action: none on canvas
-        { name: 'CSS touch-action: none on canvas', test: () => content.includes('touch-action: none') },
+        { name: 'CSS touch-action: none on canvas', test: () => htmlContent.includes('touch-action: none') },
 
         // Touch controls UI hint for mobile
-        { name: 'Touch controls UI section', test: () => content.includes('touch-controls') && content.includes('Swipe') },
+        { name: 'Touch controls UI section', test: () => htmlContent.includes('touch-controls') && htmlContent.includes('Swipe') },
 
         // Touch controls visibility: hidden on desktop, shown on touch devices
-        { name: 'Touch controls hidden by default', test: () => content.includes('.touch-controls') && content.includes('display: none') },
-        { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') },
+        { name: 'Touch controls hidden by default', test: () => htmlContent.includes('.touch-controls') && htmlContent.includes('display: none') },
+        { name: 'Touch controls shown on touch devices', test: () => htmlContent.includes('pointer: coarse') },
 
         // Exposed for testing
         { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
