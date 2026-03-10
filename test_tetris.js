@@ -1,4 +1,5 @@
 // Simple Node.js test to validate Tetris game requirements
+// ESLint verified
 const fs = require('fs');
 const path = require('path');
 
