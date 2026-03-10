@@ -190,7 +190,10 @@ function testTetrisRequirements() {
         // clearLines() no longer calls board.splice directly
         { name: 'clearLines does not splice board directly', test: () => {
             const idx = content.indexOf('function clearLines()');
-            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            // Find next function declaration (may be indented)
+            const afterIdx = idx + 'function clearLines()'.length;
+            const match = content.substring(afterIdx).match(/\n\s*function\s/);
+            const nextFn = match ? afterIdx + match.index : -1;
             const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
             return body.length > 0 && !body.includes('board.splice');
         }},
