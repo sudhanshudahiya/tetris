@@ -1,0 +1,76 @@
+import html from "eslint-plugin-html";
+
+export default [
+  {
+    files: ["**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: {
+        require: "readonly",
+        module: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        process: "readonly",
+        console: "readonly",
+        exports: "readonly",
+      },
+    },
+    rules: {
+      // Catch syntax errors and common mistakes
+      "no-undef": "error",
+      "no-unused-vars": "warn",
+      "no-unreachable": "error",
+      "no-dupe-keys": "error",
+      "no-dupe-args": "error",
+      "no-duplicate-case": "error",
+      "no-extra-semi": "error",
+      "no-func-assign": "error",
+      "no-invalid-regexp": "error",
+      "no-unexpected-multiline": "error",
+      "valid-typeof": "error",
+    },
+  },
+  {
+    files: ["**/*.html"],
+    plugins: { html },
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "script",
+      globals: {
+        document: "readonly",
+        window: "readonly",
+        console: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        requestAnimationFrame: "readonly",
+        cancelAnimationFrame: "readonly",
+        alert: "readonly",
+        confirm: "readonly",
+        navigator: "readonly",
+        performance: "readonly",
+        AudioContext: "readonly",
+        HTMLCanvasElement: "readonly",
+        KeyboardEvent: "readonly",
+        Event: "readonly",
+        localStorage: "readonly",
+      },
+    },
+    rules: {
+      // Only catch real syntax errors for HTML files, not style issues
+      "no-undef": "off",
+      "no-unused-vars": "off",
+      "no-unreachable": "error",
+      "no-dupe-keys": "error",
+      "no-dupe-args": "error",
+      "no-duplicate-case": "error",
+      "no-extra-semi": "off",
+      "no-func-assign": "error",
+      "no-invalid-regexp": "error",
+      "no-unexpected-multiline": "error",
+      "valid-typeof": "error",
+    },
+  },
+];
