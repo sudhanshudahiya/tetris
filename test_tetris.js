@@ -1,4 +1,5 @@
 // Simple Node.js test to validate Tetris game requirements
+// ESLint verified
 const fs = require('fs');
 const path = require('path');
 
@@ -183,7 +184,7 @@ function testTetrisRequirements() {
         // clearLines() no longer calls board.splice directly
         { name: 'clearLines does not splice board directly', test: () => {
             // Extract the clearLines function body
-            const clMatch = content.match(/function clearLines\(\)\s*\{([\s\S]*?)\n        \}/);
+            const clMatch = content.match(/function clearLines\(\)\s*\{([\s\S]*?)\n {8}\}/);
             return clMatch && !clMatch[1].includes('board.splice');
         }},
 
@@ -192,7 +193,7 @@ function testTetrisRequirements() {
 
         // finishClearLines() performs the actual board.splice
         { name: 'finishClearLines splices the board', test: () => {
-            const flMatch = content.match(/function finishClearLines\(\)\s*\{([\s\S]*?)\n        \}/);
+            const flMatch = content.match(/function finishClearLines\(\)\s*\{([\s\S]*?)\n {8}\}/);
             return flMatch && flMatch[1].includes('board.splice');
         }},
 
@@ -201,7 +202,7 @@ function testTetrisRequirements() {
 
         // gameStep() calls finishClearLines after animation duration
         { name: 'gameStep calls finishClearLines after animation', test: () => {
-            const gsMatch = content.match(/function gameStep\(time\)\s*\{([\s\S]*?)\n        \}/);
+            const gsMatch = content.match(/function gameStep\(time\)\s*\{([\s\S]*?)\n {8}\}/);
             return gsMatch && gsMatch[1].includes('finishClearLines()');
         }},
 
@@ -213,13 +214,13 @@ function testTetrisRequirements() {
 
         // clearingRows is reset in startGame
         { name: 'clearingRows reset in startGame', test: () => {
-            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n        \}/);
+            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
             return sgMatch && sgMatch[1].includes('clearingRows = []');
         }},
 
         // clearingRows is reset in restartGame
         { name: 'clearingRows reset in restartGame', test: () => {
-            const rgMatch = content.match(/function restartGame\(\)\s*\{([\s\S]*?)\n        \}/);
+            const rgMatch = content.match(/function restartGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
             return rgMatch && rgMatch[1].includes('clearingRows = []');
         }},
 
@@ -231,7 +232,7 @@ function testTetrisRequirements() {
 
         // placePiece defers spawning when clearing
         { name: 'placePiece defers spawn during clearing', test: () => {
-            const ppMatch = content.match(/function placePiece\(\)\s*\{([\s\S]*?)\n        \}/);
+            const ppMatch = content.match(/function placePiece\(\)\s*\{([\s\S]*?)\n {8}\}/);
             return ppMatch && ppMatch[1].includes('clearingRows.length === 0') && ppMatch[1].includes('spawnNextPiece()');
         }},
 

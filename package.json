@@ -1,7 +1,7 @@
 {
   "name": "tetris",
   "version": "1.0.0",
-  "description": "Tetris game",
+  "description": "Tetris game with ESLint pre-commit hook",
   "private": true,
   "scripts": {
     "lint": "eslint index.html test_tetris.js",
