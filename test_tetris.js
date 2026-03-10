@@ -5,12 +5,15 @@ const path = require('path');
 
 function testTetrisRequirements() {
     const htmlFile = path.join(__dirname, 'index.html');
+    const gameFile = path.join(__dirname, 'game.js');
 
     if (!fs.existsSync(htmlFile)) {
         throw new Error('index.html file not found');
     }
 
-    const content = fs.readFileSync(htmlFile, 'utf8');
+    const htmlContent = fs.readFileSync(htmlFile, 'utf8');
+    const gameContent = fs.existsSync(gameFile) ? fs.readFileSync(gameFile, 'utf8') : '';
+    const content = htmlContent + '\n' + gameContent;
 
     const tests = [
         // Single file requirement
@@ -20,7 +23,7 @@ function testTetrisRequirements() {
         { name: 'Inline CSS styles', test: () => content.includes('<style>') && content.includes('</style>') },
 
         // Inline JavaScript requirement
-        { name: 'Inline JavaScript', test: () => content.includes('<script>') && content.includes('</script>') },
+        { name: 'Inline JavaScript', test: () => (content.includes('<script>') || content.includes('<script src="game.js">')) && content.includes('</script>') },
 
         // Game board rendering
         { name: 'Game board canvas', test: () => content.includes('<canvas') && content.includes('gameCanvas') },
@@ -183,9 +186,10 @@ function testTetrisRequirements() {
 
         // clearLines() no longer calls board.splice directly
         { name: 'clearLines does not splice board directly', test: () => {
-            // Extract the clearLines function body
-            const clMatch = content.match(/function clearLines\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return clMatch && !clMatch[1].includes('board.splice');
+            const idx = content.indexOf('function clearLines()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.length > 0 && !body.includes('board.splice');
         }},
 
         // finishClearLines() function exists for deferred row removal
@@ -193,8 +197,10 @@ function testTetrisRequirements() {
 
         // finishClearLines() performs the actual board.splice
         { name: 'finishClearLines splices the board', test: () => {
-            const flMatch = content.match(/function finishClearLines\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return flMatch && flMatch[1].includes('board.splice');
+            const idx = content.indexOf('function finishClearLines()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('board.splice');
         }},
 
         // gameStep() checks clearingRows to pause piece drops
@@ -202,8 +208,10 @@ function testTetrisRequirements() {
 
         // gameStep() calls finishClearLines after animation duration
         { name: 'gameStep calls finishClearLines after animation', test: () => {
-            const gsMatch = content.match(/function gameStep\(time\)\s*\{([\s\S]*?)\n {8}\}/);
-            return gsMatch && gsMatch[1].includes('finishClearLines()');
+            const idx = content.indexOf('function gameStep(time)');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('finishClearLines()');
         }},
 
         // Flash effect rendering: white overlay on clearing rows
@@ -214,14 +222,18 @@ function testTetrisRequirements() {
 
         // clearingRows is reset in startGame
         { name: 'clearingRows reset in startGame', test: () => {
-            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return sgMatch && sgMatch[1].includes('clearingRows = []');
+            const idx = content.indexOf('function startGame()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('clearingRows = []');
         }},
 
         // clearingRows is reset in restartGame
         { name: 'clearingRows reset in restartGame', test: () => {
-            const rgMatch = content.match(/function restartGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return rgMatch && rgMatch[1].includes('clearingRows = []');
+            const idx = content.indexOf('function restartGame()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('clearingRows = []');
         }},
 
         // Input blocked during clearing animation
@@ -232,8 +244,10 @@ function testTetrisRequirements() {
 
         // placePiece defers spawning when clearing
         { name: 'placePiece defers spawn during clearing', test: () => {
-            const ppMatch = content.match(/function placePiece\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return ppMatch && ppMatch[1].includes('clearingRows.length === 0') && ppMatch[1].includes('spawnNextPiece()');
+            const idx = content.indexOf('function placePiece()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('clearingRows.length === 0') && body.includes('spawnNextPiece()');
         }},
 
         // ── Line-Clear Flash Animation (branch 68200bdb) ─────────────────────────
