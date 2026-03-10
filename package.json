@@ -2,14 +2,14 @@
   "name": "tetris",
   "version": "1.0.0",
   "description": "",
-  "main": "test_tetris.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint index.html test_tetris.js",
+    "test": "node test_tetris.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "eslint": "^10.0.3",
     "eslint-plugin-html": "^8.1.4"
