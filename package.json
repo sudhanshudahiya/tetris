@@ -4,7 +4,7 @@
   "description": "Tetris game with ESLint pre-commit hook",
   "private": true,
   "scripts": {
-    "lint": "eslint game.js test_tetris.js",
+    "lint": "eslint index.html game.js test_tetris.js",
     "prepare": "sh scripts/install-hooks.sh",
     "test": "node test_tetris.js"
   },
