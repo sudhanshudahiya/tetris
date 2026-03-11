@@ -1562,12 +1562,22 @@
             const TAP_MAX_DISTANCE  = 15;   // max px movement to count as a tap
             const HARD_DROP_VELOCITY = 1.8; // px/ms — fast downward swipe triggers hard drop
             const SOFT_DROP_REPEAT  = 80;   // ms interval for continuous soft drop
+            const LONG_PRESS_DELAY  = 500;  // ms — hold to trigger hard drop
+            const CELL_SIZE_PX      = 30;   // px per cell for continuous drag movement
 
             let touchStartX = 0;
             let touchStartY = 0;
             let touchStartTime = 0;
             let isTouching = false;
             let softDropInterval = null;
+
+            // Long-press hard drop state
+            let longPressTimer = null;
+            let longPressTriggered = false;
+
+            // Continuous touchmove tracking
+            let lastMoveX = 0;
+            let lastMoveY = 0;
 
             // Prevent scrolling / zooming on the game canvas
             touchTarget.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -1584,18 +1594,81 @@
                 touchStartY = touch.clientY;
                 touchStartTime = Date.now();
                 isTouching = true;
+                longPressTriggered = false;
+
+                // Track last processed position for continuous drag movement
+                lastMoveX = touch.clientX;
+                lastMoveY = touch.clientY;
 
                 clearSoftDrop();
+                clearLongPress();
+
+                // Start long-press timer for hard drop
+                longPressTimer = setTimeout(function() {
+                    if (!gameRunning || gamePaused || isClearing) return;
+                    longPressTriggered = true;
+                    // Long-press hard drop
+                    while (isValidMove(currentPiece, 0, 1)) {
+                        currentPiece.y++;
+                        score += 2;
+                    }
+                    updateDisplay();
+                    placePiece();
+                }, LONG_PRESS_DELAY);
             }
 
             function handleTouchMove(e) {
                 e.preventDefault(); // prevent scroll while playing
+                if (!isTouching || longPressTriggered) return;
+                if (!gameRunning || gamePaused || isClearing) return;
+
+                const touch = e.touches[0];
+                const dx = touch.clientX - lastMoveX;
+                const dy = touch.clientY - lastMoveY;
+
+                // Cancel long-press if finger moved beyond tap threshold
+                const totalDx = touch.clientX - touchStartX;
+                const totalDy = touch.clientY - touchStartY;
+                const totalDistance = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+                if (totalDistance > TAP_MAX_DISTANCE) {
+                    clearLongPress();
+                }
+
+                // Continuous horizontal movement — one cell per CELL_SIZE_PX
+                if (Math.abs(dx) >= CELL_SIZE_PX) {
+                    const direction = dx > 0 ? 1 : -1;
+                    if (isValidMove(currentPiece, direction, 0)) {
+                        currentPiece.x += direction;
+                    }
+                    lastMoveX = touch.clientX;
+                    drawBoard();
+                }
+
+                // Continuous vertical (downward) movement
+                if (dy >= CELL_SIZE_PX) {
+                    if (isValidMove(currentPiece, 0, 1)) {
+                        currentPiece.y++;
+                        score++;
+                        updateDisplay();
+                    }
+                    lastMoveY = touch.clientY;
+                    drawBoard();
+                }
             }
 
             function handleTouchEnd(e) {
                 e.preventDefault();
                 if (!isTouching) return;
                 isTouching = false;
+
+                clearLongPress();
+                clearSoftDrop();
+
+                // If long-press already triggered hard drop, skip swipe detection
+                if (longPressTriggered) {
+                    longPressTriggered = false;
+                    return;
+                }
 
                 const touch = e.changedTouches[0];
                 const dx = touch.clientX - touchStartX;
@@ -1604,8 +1677,6 @@
                 const absDx = Math.abs(dx);
                 const absDy = Math.abs(dy);
                 const distance = Math.sqrt(dx * dx + dy * dy);
-
-                clearSoftDrop();
 
                 // Ignore if game isn't active or clearing animation in progress
                 if (!gameRunning || gamePaused || isClearing) return;
@@ -1672,7 +1743,15 @@
 
             function handleTouchCancel(e) {
                 isTouching = false;
+                clearLongPress();
                 clearSoftDrop();
+            }
+
+            function clearLongPress() {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
             }
 
             function clearSoftDrop() {
@@ -1688,6 +1767,8 @@
                 SWIPE_MAX_TIME,
                 TAP_MAX_DISTANCE,
                 HARD_DROP_VELOCITY,
+                LONG_PRESS_DELAY,
+                CELL_SIZE_PX,
                 handleTouchStart,
                 handleTouchMove,
                 handleTouchEnd,

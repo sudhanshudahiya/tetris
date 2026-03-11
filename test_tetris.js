@@ -168,6 +168,73 @@ function testTetrisRequirements() {
         // Exposed for testing
         { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
 
+        // ── Long-press hard drop ──────────────────────────────
+        { name: 'LONG_PRESS_DELAY constant defined', test: () => content.includes('LONG_PRESS_DELAY') },
+        { name: 'CELL_SIZE_PX constant defined', test: () => content.includes('CELL_SIZE_PX') },
+        { name: 'longPressTimer variable declared', test: () => content.includes('longPressTimer') },
+        { name: 'longPressTriggered flag declared', test: () => content.includes('longPressTriggered') },
+        { name: 'Long-press starts setTimeout in handleTouchStart', test: () => content.includes('setTimeout') && content.includes('LONG_PRESS_DELAY') },
+        { name: 'Long-press triggers hard drop via while loop', test: () => {
+            const lpIdx = content.indexOf('longPressTriggered = true');
+            if (lpIdx === -1) return false;
+            const afterLp = content.substring(lpIdx, lpIdx + 300);
+            return afterLp.includes('while') && afterLp.includes('placePiece');
+        }},
+        { name: 'clearLongPress function defined', test: () => content.includes('function clearLongPress') && content.includes('clearTimeout') },
+        { name: 'Long-press cancelled on move beyond threshold', test: () => {
+            const moveIdx = content.indexOf('function handleTouchMove');
+            if (moveIdx === -1) return false;
+            const moveBody = content.substring(moveIdx, moveIdx + 800);
+            return moveBody.includes('clearLongPress');
+        }},
+        { name: 'Long-press cancelled in handleTouchEnd', test: () => {
+            const endIdx = content.indexOf('function handleTouchEnd');
+            if (endIdx === -1) return false;
+            const endBody = content.substring(endIdx, endIdx + 400);
+            return endBody.includes('clearLongPress');
+        }},
+        { name: 'Long-press cancelled in handleTouchCancel', test: () => {
+            const cancelIdx = content.indexOf('function handleTouchCancel');
+            if (cancelIdx === -1) return false;
+            const cancelBody = content.substring(cancelIdx, cancelIdx + 200);
+            return cancelBody.includes('clearLongPress');
+        }},
+        { name: 'handleTouchEnd skips swipe if longPressTriggered', test: () => {
+            const endIdx = content.indexOf('function handleTouchEnd');
+            if (endIdx === -1) return false;
+            const endBody = content.substring(endIdx, endIdx + 400);
+            return endBody.includes('longPressTriggered');
+        }},
+
+        // ── Continuous touchmove movement ──────────────────────
+        { name: 'lastMoveX tracking variable declared', test: () => content.includes('lastMoveX') },
+        { name: 'lastMoveY tracking variable declared', test: () => content.includes('lastMoveY') },
+        { name: 'lastMoveX initialized in handleTouchStart', test: () => {
+            const startIdx = content.indexOf('function handleTouchStart');
+            if (startIdx === -1) return false;
+            const startBody = content.substring(startIdx, startIdx + 600);
+            return startBody.includes('lastMoveX');
+        }},
+        { name: 'Horizontal drag moves piece in handleTouchMove', test: () => {
+            const moveIdx = content.indexOf('function handleTouchMove');
+            if (moveIdx === -1) return false;
+            const moveBody = content.substring(moveIdx, moveIdx + 1200);
+            return moveBody.includes('CELL_SIZE_PX') && moveBody.includes('currentPiece.x');
+        }},
+        { name: 'Vertical drag moves piece down in handleTouchMove', test: () => {
+            const moveIdx = content.indexOf('function handleTouchMove');
+            if (moveIdx === -1) return false;
+            const moveBody = content.substring(moveIdx, moveIdx + 1500);
+            return moveBody.includes('currentPiece.y++');
+        }},
+        { name: 'LONG_PRESS_DELAY exposed in _touchControls', test: () => content.includes('LONG_PRESS_DELAY') && content.includes('window._touchControls') },
+        { name: 'CELL_SIZE_PX exposed in _touchControls', test: () => {
+            const exposeIdx = content.indexOf('window._touchControls');
+            if (exposeIdx === -1) return false;
+            const exposeBody = content.substring(exposeIdx, exposeIdx + 300);
+            return exposeBody.includes('CELL_SIZE_PX');
+        }},
+
         // ── Line-Clear Animation (clearingRows state) ─────────────
         // clearingRows array declared in game state
         { name: 'clearingRows state variable declared', test: () => content.includes('let clearingRows = []') },
