@@ -82,6 +82,10 @@
                 inset 0 0 30px rgba(0, 0, 0, 0.8);
         }
 
+        .game-board {
+            touch-action: none;         /* prevent browser gestures on game board container */
+        }
+
         canvas#gameCanvas {
             display: block;
             background: transparent;
@@ -557,9 +561,9 @@
                     <div class="control-item"><kbd>P</kbd> Pause</div>
                 </div>
                 <div class="touch-controls">
-                    <div class="control-item"><kbd>Swipe ← →</kbd> Move</div>
-                    <div class="control-item"><kbd>Swipe ↓</kbd> Soft Drop</div>
-                    <div class="control-item"><kbd>Fast ↓</kbd> Hard Drop</div>
+                    <div class="control-item"><kbd>Drag ← →</kbd> Move</div>
+                    <div class="control-item"><kbd>Drag ↓</kbd> Soft Drop</div>
+                    <div class="control-item"><kbd>Long Press</kbd> Hard Drop</div>
                     <div class="control-item"><kbd>Tap / ↑</kbd> Rotate</div>
                 </div>
             </div>

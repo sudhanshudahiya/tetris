@@ -165,7 +165,7 @@ function testTetrisRequirements() {
         { name: 'CSS touch-action: none on canvas', test: () => htmlContent.includes('touch-action: none') },
 
         // Touch controls UI hint for mobile
-        { name: 'Touch controls UI section', test: () => htmlContent.includes('touch-controls') && htmlContent.includes('Swipe') },
+        { name: 'Touch controls UI section', test: () => htmlContent.includes('touch-controls') && htmlContent.includes('Drag') },
 
         // Touch controls visibility: hidden on desktop, shown on touch devices
         { name: 'Touch controls hidden by default', test: () => htmlContent.includes('.touch-controls') && htmlContent.includes('display: none') },
