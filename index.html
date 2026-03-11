@@ -293,12 +293,15 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(0, 0, 0, 0.92);
-            padding: 30px;
+            padding: 24px 20px;
             border-radius: 15px;
             text-align: center;
             border: 2px solid rgba(255, 61, 90, 0.7);
             box-shadow: 0 0 30px rgba(255, 61, 90, 0.4);
             display: none;
+            max-height: 90%;
+            overflow-y: auto;
+            width: 280px;
         }
 
         .game-over h2 {
@@ -318,6 +321,119 @@
         .game-over p span {
             color: #00ffff;
             font-weight: bold;
+        }
+
+        /* High score initials input */
+        .high-score-section {
+            margin: 12px 0;
+        }
+
+        .high-score-msg {
+            color: #ffd700 !important;
+            font-size: 16px !important;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+            letter-spacing: 2px;
+        }
+
+        .initials-form {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .initials-input {
+            width: 70px;
+            padding: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            background: rgba(0, 255, 255, 0.08);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 8px;
+            color: #00ffff;
+            outline: none;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .initials-input:focus {
+            border-color: #00ffff;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+        }
+
+        .initials-input::placeholder {
+            color: rgba(0, 255, 255, 0.3);
+        }
+
+        .submit-score-btn {
+            background: linear-gradient(135deg, #ffd700, #c9a400);
+            color: #000;
+            padding: 8px 14px;
+            font-size: 11px;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+        }
+
+        .submit-score-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Leaderboard table */
+        .leaderboard-section {
+            margin: 12px 0;
+        }
+
+        .leaderboard-title {
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+            letter-spacing: 2px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .leaderboard-table thead th {
+            color: #ffd700;
+            text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+            padding: 4px 6px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .leaderboard-table tbody td {
+            color: rgba(255, 255, 255, 0.85);
+            padding: 4px 6px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.08);
+        }
+
+        .leaderboard-table tbody tr:nth-child(1) td {
+            color: #ffd700;
+            text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
+        }
+
+        .leaderboard-table tbody tr:nth-child(2) td {
+            color: #c0c0c0;
+            text-shadow: 0 0 4px rgba(192, 192, 192, 0.3);
+        }
+
+        .leaderboard-table tbody tr:nth-child(3) td {
+            color: #cd7f32;
+            text-shadow: 0 0 4px rgba(205, 127, 50, 0.3);
+        }
+
+        .leaderboard-table tbody tr:hover td {
+            background: rgba(0, 255, 255, 0.06);
         }
 
         /* Show keyboard controls by default, hide touch controls */
@@ -376,6 +492,31 @@
                 <h2>Game Over!</h2>
                 <p>Final Score: <span id="finalScore">0</span></p>
                 <p>Lines Cleared: <span id="finalLines">0</span></p>
+
+                <div id="highScoreSection" class="high-score-section" style="display:none;">
+                    <p class="high-score-msg">New High Score!</p>
+                    <div class="initials-form">
+                        <input type="text" id="initialsInput" class="initials-input" maxlength="3" placeholder="AAA" autocomplete="off" />
+                        <button class="game-btn submit-score-btn" onclick="submitScore()">Submit Score</button>
+                    </div>
+                </div>
+
+                <div class="leaderboard-section">
+                    <h3 class="leaderboard-title">Leaderboard</h3>
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Score</th>
+                                <th>Lines</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                        </tbody>
+                    </table>
+                </div>
+
                 <button class="game-btn restart-btn" onclick="startNewGame()">Play Again</button>
             </div>
         </div>

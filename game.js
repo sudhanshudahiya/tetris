@@ -1261,6 +1261,90 @@
             };
         })();
 
+        // ============================================================
+        //  LEADERBOARD — localStorage High Score Persistence
+        // ============================================================
+        const LEADERBOARD_KEY = 'tetris_leaderboard';
+        const MAX_LEADERBOARD_ENTRIES = 10;
+
+        function getLeaderboard() {
+            try {
+                const data = localStorage.getItem(LEADERBOARD_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveScore(initials, scoreVal, linesVal) {
+            const leaderboard = getLeaderboard();
+            leaderboard.push({
+                initials: initials.toUpperCase().substring(0, 3),
+                score: scoreVal,
+                lines: linesVal,
+                date: Date.now()
+            });
+            leaderboard.sort((a, b) => b.score - a.score);
+            if (leaderboard.length > MAX_LEADERBOARD_ENTRIES) {
+                leaderboard.length = MAX_LEADERBOARD_ENTRIES;
+            }
+            try {
+                localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+            } catch (e) {
+                // Storage full or unavailable
+            }
+            return leaderboard;
+        }
+
+        function isHighScore(scoreVal) {
+            if (scoreVal <= 0) return false;
+            const leaderboard = getLeaderboard();
+            if (leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
+            return scoreVal > leaderboard[leaderboard.length - 1].score;
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            if (!tbody) return;
+            const leaderboard = getLeaderboard();
+            tbody.innerHTML = '';
+            if (leaderboard.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="4" style="text-align:center;color:rgba(255,255,255,0.5);padding:8px;">No scores yet</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+            leaderboard.forEach((entry, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${i + 1}</td><td>${entry.initials}</td><td>${entry.score}</td><td>${entry.lines}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function submitScore() {
+            const input = document.getElementById('initialsInput');
+            if (!input) return;
+            const initials = input.value.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase();
+            if (initials.length === 0) return;
+            saveScore(initials, score, lines);
+            renderLeaderboard();
+            // Hide the initials input section
+            const section = document.getElementById('highScoreSection');
+            if (section) section.style.display = 'none';
+            input.value = '';
+        }
+
+        // Expose leaderboard functions for testing
+        window._leaderboard = {
+            getLeaderboard,
+            saveScore,
+            isHighScore,
+            renderLeaderboard,
+            submitScore,
+            LEADERBOARD_KEY,
+            MAX_LEADERBOARD_ENTRIES
+        };
+
         // Game control functions
         function startGame() {
             if (gameRunning) return;
@@ -1331,6 +1415,24 @@
             document.getElementById('finalLines').textContent = lines;
             document.getElementById('gameOverModal').style.display = 'block';
             document.getElementById('startBtn').style.display = 'inline-block';
+
+            // Show/hide initials input based on high score qualification
+            const highScoreSection = document.getElementById('highScoreSection');
+            if (highScoreSection) {
+                if (isHighScore(score)) {
+                    highScoreSection.style.display = 'block';
+                    const input = document.getElementById('initialsInput');
+                    if (input) {
+                        input.value = '';
+                        input.focus();
+                    }
+                } else {
+                    highScoreSection.style.display = 'none';
+                }
+            }
+
+            // Always render leaderboard on game over
+            renderLeaderboard();
 
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);

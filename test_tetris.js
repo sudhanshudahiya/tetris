@@ -323,7 +323,74 @@ function testTetrisRequirements() {
         { name: 'Flash: piece not spawned during clearing', test: () => content.includes('if (!isClearing)') && content.includes('createPiece') },
 
         // Exposed for testing
-        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') }
+        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') },
+
+        // ── Leaderboard / High Score Persistence ──────────────────────
+        // localStorage key constant
+        { name: 'Leaderboard: LEADERBOARD_KEY defined', test: () => content.includes('LEADERBOARD_KEY') && content.includes('tetris_leaderboard') },
+
+        // Max entries constant
+        { name: 'Leaderboard: MAX_LEADERBOARD_ENTRIES defined', test: () => content.includes('MAX_LEADERBOARD_ENTRIES') && content.includes('10') },
+
+        // getLeaderboard function
+        { name: 'Leaderboard: getLeaderboard function', test: () => content.includes('function getLeaderboard') && content.includes('localStorage.getItem') },
+
+        // saveScore function
+        { name: 'Leaderboard: saveScore function', test: () => content.includes('function saveScore') && content.includes('localStorage.setItem') },
+
+        // isHighScore function
+        { name: 'Leaderboard: isHighScore function', test: () => content.includes('function isHighScore') },
+
+        // renderLeaderboard function
+        { name: 'Leaderboard: renderLeaderboard function', test: () => content.includes('function renderLeaderboard') && content.includes('leaderboardBody') },
+
+        // submitScore function
+        { name: 'Leaderboard: submitScore function', test: () => content.includes('function submitScore') && content.includes('initialsInput') },
+
+        // gameOver calls isHighScore
+        { name: 'Leaderboard: gameOver calls isHighScore', test: () => {
+            const idx = content.indexOf('function gameOver');
+            const nextFn = content.indexOf('\n        function startNewGame', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('isHighScore(score)');
+        }},
+
+        // gameOver calls renderLeaderboard
+        { name: 'Leaderboard: gameOver calls renderLeaderboard', test: () => {
+            const idx = content.indexOf('function gameOver');
+            const nextFn = content.indexOf('\n        function startNewGame', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('renderLeaderboard()');
+        }},
+
+        // gameOver shows/hides highScoreSection
+        { name: 'Leaderboard: gameOver toggles highScoreSection', test: () => {
+            const idx = content.indexOf('function gameOver');
+            const nextFn = content.indexOf('\n        function startNewGame', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('highScoreSection');
+        }},
+
+        // HTML: leaderboard table exists
+        { name: 'Leaderboard: HTML table structure', test: () => htmlContent.includes('leaderboard-table') && htmlContent.includes('leaderboardBody') },
+
+        // HTML: initials input exists
+        { name: 'Leaderboard: HTML initials input', test: () => htmlContent.includes('initialsInput') && htmlContent.includes('initials-input') },
+
+        // HTML: submit score button
+        { name: 'Leaderboard: HTML submit score button', test: () => htmlContent.includes('submitScore()') && htmlContent.includes('Submit Score') },
+
+        // HTML: highScoreSection container
+        { name: 'Leaderboard: HTML highScoreSection', test: () => htmlContent.includes('highScoreSection') && htmlContent.includes('high-score-section') },
+
+        // CSS: leaderboard table styling
+        { name: 'Leaderboard: CSS leaderboard-table', test: () => htmlContent.includes('.leaderboard-table') },
+
+        // CSS: initials input styling
+        { name: 'Leaderboard: CSS initials-input', test: () => htmlContent.includes('.initials-input') },
+
+        // Leaderboard exposed for testing
+        { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') }
     ];
 
     console.log('Testing Tetris Game Requirements...\n');
