@@ -886,6 +886,15 @@
             isClearing = false;
         }
 
+        // Expose ghost piece logic for testing
+        window._ghost = {
+            getGhostY,
+            get currentPiece() { return currentPiece; },
+            get board() { return board; },
+            BOARD_WIDTH,
+            BOARD_HEIGHT
+        };
+
         // Expose flash animation state for testing
         window._flashAnimation = {
             get clearingRows() { return clearingRows; },
@@ -913,13 +922,36 @@
             }
         }
 
+        // Calculate ghost piece Y position (pure function, testable)
+        function getGhostY(piece, boardState) {
+            let ghostY = piece.y;
+            // Simulate isValidMove inline using boardState
+            const canMove = (dy) => {
+                for (let row = 0; row < piece.shape.length; row++) {
+                    for (let col = 0; col < piece.shape[row].length; col++) {
+                        if (piece.shape[row][col] === 1) {
+                            const newX = piece.x + col;
+                            const newY = piece.y + row + dy;
+                            if (newX < 0 || newX >= boardState[0].length ||
+                                newY >= boardState.length ||
+                                (newY >= 0 && boardState[newY][newX] !== 0)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            };
+            while (canMove(ghostY - piece.y + 1)) {
+                ghostY++;
+            }
+            return ghostY;
+        }
+
         // Draw ghost piece (landing preview)
         function drawGhost() {
             if (!currentPiece) return;
-            let ghostY = currentPiece.y;
-            while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
-                ghostY++;
-            }
+            const ghostY = getGhostY(currentPiece, board);
             if (ghostY === currentPiece.y) return;
 
             ctx.save();
