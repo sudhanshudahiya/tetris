@@ -43,7 +43,8 @@
             let fallerLayers = [[], [], []];
             let nebulae = [];        // drifting color clouds
             let auroraPhase = 0;
-            let time = 0;            // global tick counter
+            let time = 0;            // global tick counter (derived from timestamps)
+            let bgLastTimestamp = 0;  // previous frame timestamp for delta-time
 
             // ── Helper: rotate shape ──────────────────────────────────
             function rotateShape(shape, times) {
@@ -216,9 +217,11 @@
             }
 
             // ── Main loop ─────────────────────────────────────────────
-            function bgLoop() {
+            function bgLoop(timestamp) {
                 const W = bgCanvas.width, H = bgCanvas.height;
-                time++;
+                const bgDeltaTime = Math.min(timestamp - bgLastTimestamp, 100);
+                bgLastTimestamp = timestamp;
+                time += bgDeltaTime * 0.06;  // normalize: ~1 unit per frame at 60fps
                 auroraPhase += 0.004;
 
                 bgCtx.clearRect(0, 0, W, H);
@@ -1033,7 +1036,15 @@
                 return;
             }
 
-            const deltaTime = time - lastTime;
+            // Guard against first-frame spike: skip frame when lastTime is unset
+            if (lastTime === 0) {
+                lastTime = time;
+                gameLoop = requestAnimationFrame(gameStep);
+                return;
+            }
+
+            // Cap deltaTime to 100ms to prevent huge drops after tab-switch or debugger pause
+            const deltaTime = Math.min(time - lastTime, 100);
             lastTime = time;
 
             // If rows are being cleared, pause piece drops and run animation
