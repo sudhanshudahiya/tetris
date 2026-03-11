@@ -1334,6 +1334,11 @@
             input.value = '';
         }
 
+        function clearLeaderboard() {
+            localStorage.removeItem(LEADERBOARD_KEY);
+            renderLeaderboard();
+        }
+
         // Expose leaderboard functions for testing
         window._leaderboard = {
             getLeaderboard,
@@ -1341,6 +1346,7 @@
             isHighScore,
             renderLeaderboard,
             submitScore,
+            clearLeaderboard,
             LEADERBOARD_KEY,
             MAX_LEADERBOARD_ENTRIES
         };
@@ -1453,3 +1459,5 @@
         // Clear next piece preview
         nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
         nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+        // Initialize leaderboard display
+        renderLeaderboard();

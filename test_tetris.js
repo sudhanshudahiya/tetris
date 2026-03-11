@@ -341,6 +341,9 @@ function testTetrisRequirements() {
         // isHighScore function
         { name: 'Leaderboard: isHighScore function', test: () => content.includes('function isHighScore') },
 
+        // clearLeaderboard function exists
+        { name: 'Leaderboard: clearLeaderboard function exists', test: () => content.includes('function clearLeaderboard') },
+
         // renderLeaderboard function
         { name: 'Leaderboard: renderLeaderboard function', test: () => content.includes('function renderLeaderboard') && content.includes('leaderboardBody') },
 

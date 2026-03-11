@@ -569,6 +569,20 @@
                 <button class="game-btn restart-btn" id="restartBtn" onclick="restartGame()">Restart</button>
                 <button class="game-btn pause-btn" id="pauseBtn" onclick="pauseGame()">Pause</button>
             </div>
+
+            <div class="leaderboard-panel">
+                <h3>LEADERBOARD</h3>
+                <div class="initials-entry">
+                    <input type="text" id="initialsInput" maxlength="3" placeholder="AAA" class="initials-input">
+                    <button class="game-btn start-btn" onclick="submitScore()">Submit</button>
+                </div>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr><th>#</th><th>Name</th><th>Score</th></tr>
+                    </thead>
+                    <tbody id="leaderboardBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
