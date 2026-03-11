@@ -453,6 +453,166 @@ function testTetrisRequirements() {
         // Delta cap constant exists (Math.min with cap value)
         { name: 'Delta-time: delta cap constant exists', test: () => {
             return /Math\.min\(.*,\s*100\)/.test(gameContent);
+        }},
+
+        // ── Ghost Piece (Drop-Position Preview) ──────────────────────────
+        // getGhostY pure function exists
+        { name: 'Ghost: getGhostY pure function exists', test: () => content.includes('function getGhostY(piece, boardState)') },
+
+        // drawGhost uses getGhostY
+        { name: 'Ghost: drawGhost uses getGhostY', test: () => {
+            const idx = content.indexOf('function drawGhost()');
+            const nextFn = content.indexOf('\n        function ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('getGhostY(currentPiece, board)');
+        }},
+
+        // Ghost skipped when piece already at lowest position
+        { name: 'Ghost: skipped when ghostY === currentPiece.y', test: () => {
+            const idx = content.indexOf('function drawGhost()');
+            const nextFn = content.indexOf('\n        function ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('ghostY === currentPiece.y') && body.includes('return');
+        }},
+
+        // Ghost uses currentPiece.color
+        { name: 'Ghost: uses currentPiece.color for rendering', test: () => {
+            const idx = content.indexOf('function drawGhost()');
+            const nextFn = content.indexOf('\n        function ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('currentPiece.color');
+        }},
+
+        // Ghost renders with reduced alpha
+        { name: 'Ghost: renders with reduced globalAlpha', test: () => {
+            const idx = content.indexOf('function drawGhost()');
+            const nextFn = content.indexOf('\n        function ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('globalAlpha') && /globalAlpha\s*=\s*0\.[12345]/.test(body);
+        }},
+
+        // Ghost exposed for testing
+        { name: 'Ghost: state exposed for testing', test: () => content.includes('window._ghost') },
+
+        // Ghost: getGhostY on empty board drops to bottom
+        { name: 'Ghost: getGhostY drops to bottom on empty board', test: () => {
+            // Simulate: 20-row, 10-col empty board, T-piece at row 0
+            const ROWS = 20, COLS = 10;
+            const emptyBoard = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            const piece = { x: 4, y: 0, shape: [[0,1,0],[1,1,1]], color: '#ff0' };
+            // Pure calculation: T-piece is 2 rows tall, so ghostY = 18 (rows 18-19)
+            let ghostY = piece.y;
+            const canMove = (dy) => {
+                for (let r = 0; r < piece.shape.length; r++) {
+                    for (let c = 0; c < piece.shape[r].length; c++) {
+                        if (piece.shape[r][c] === 1) {
+                            const nX = piece.x + c;
+                            const nY = piece.y + r + dy;
+                            if (nX < 0 || nX >= COLS || nY >= ROWS || (nY >= 0 && emptyBoard[nY][nX] !== 0)) return false;
+                        }
+                    }
+                }
+                return true;
+            };
+            while (canMove(ghostY - piece.y + 1)) ghostY++;
+            return ghostY === 18;
+        }},
+
+        // Ghost: getGhostY on partially filled board stops above obstacle
+        { name: 'Ghost: getGhostY stops above filled rows', test: () => {
+            const ROWS = 20, COLS = 10;
+            const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            // Fill row 15 completely
+            for (let c = 0; c < COLS; c++) board[15][c] = 1;
+            const piece = { x: 4, y: 0, shape: [[1,1],[1,1]], color: '#ff0' }; // O-piece
+            let ghostY = piece.y;
+            const canMove = (dy) => {
+                for (let r = 0; r < piece.shape.length; r++) {
+                    for (let c = 0; c < piece.shape[r].length; c++) {
+                        if (piece.shape[r][c] === 1) {
+                            const nX = piece.x + c;
+                            const nY = piece.y + r + dy;
+                            if (nX < 0 || nX >= COLS || nY >= ROWS || (nY >= 0 && board[nY][nX] !== 0)) return false;
+                        }
+                    }
+                }
+                return true;
+            };
+            while (canMove(ghostY - piece.y + 1)) ghostY++;
+            return ghostY === 13; // O-piece (2 tall) lands at row 13-14, above row 15
+        }},
+
+        // Ghost: piece already at bottom returns same Y (ghost skipped)
+        { name: 'Ghost: piece at bottom returns same Y', test: () => {
+            const ROWS = 20, COLS = 10;
+            const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            const piece = { x: 4, y: 18, shape: [[1,1],[1,1]], color: '#ff0' }; // O at bottom
+            let ghostY = piece.y;
+            const canMove = (dy) => {
+                for (let r = 0; r < piece.shape.length; r++) {
+                    for (let c = 0; c < piece.shape[r].length; c++) {
+                        if (piece.shape[r][c] === 1) {
+                            const nX = piece.x + c;
+                            const nY = piece.y + r + dy;
+                            if (nX < 0 || nX >= COLS || nY >= ROWS || (nY >= 0 && board[nY][nX] !== 0)) return false;
+                        }
+                    }
+                }
+                return true;
+            };
+            while (canMove(ghostY - piece.y + 1)) ghostY++;
+            return ghostY === piece.y; // Can't drop further, ghost === piece position
+        }},
+
+        // Ghost: I-piece on empty board drops to correct position
+        { name: 'Ghost: I-piece drops correctly on empty board', test: () => {
+            const ROWS = 20, COLS = 10;
+            const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            const piece = { x: 3, y: 0, shape: [[1,1,1,1]], color: '#0ff' }; // I-piece horizontal
+            let ghostY = piece.y;
+            const canMove = (dy) => {
+                for (let r = 0; r < piece.shape.length; r++) {
+                    for (let c = 0; c < piece.shape[r].length; c++) {
+                        if (piece.shape[r][c] === 1) {
+                            const nX = piece.x + c;
+                            const nY = piece.y + r + dy;
+                            if (nX < 0 || nX >= COLS || nY >= ROWS || (nY >= 0 && board[nY][nX] !== 0)) return false;
+                        }
+                    }
+                }
+                return true;
+            };
+            while (canMove(ghostY - piece.y + 1)) ghostY++;
+            return ghostY === 19; // I-piece (1 row) lands at row 19
+        }},
+
+        // Ghost: drawGhost called in drawBoard
+        { name: 'Ghost: drawGhost called in drawBoard', test: () => {
+            const idx = content.indexOf('function drawBoard()');
+            const nextFn = content.indexOf('\n        function ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 3000);
+            return body.includes('drawGhost()');
+        }},
+
+        // Ghost piece additional validation tests
+        { name: 'Ghost: drawGhost function exists', test: () => {
+            return gameContent.includes('function drawGhost()');
+        }},
+        { name: 'Ghost: skips rendering during line-clear', test: () => {
+            return gameContent.includes('clearingRows.length > 0') &&
+                   /drawGhost[\s\S]{0,500}clearingRows\.length\s*>\s*0/.test(gameContent);
+        }},
+        { name: 'Ghost: uses dashed border for distinction', test: () => {
+            return /drawGhost[\s\S]*setLineDash/.test(gameContent);
+        }},
+        { name: 'Ghost: uses piece color for rendering (regex)', test: () => {
+            return /drawGhost[\s\S]*currentPiece\.color/.test(gameContent);
+        }},
+        { name: 'Ghost: called in drawBoard (regex)', test: () => {
+            return /drawBoard[\s\S]*drawGhost\(\)/.test(gameContent);
+        }},
+        { name: 'Ghost: skips when piece at ghost position', test: () => {
+            return /ghostY\s*===\s*currentPiece\.y.*return/.test(gameContent);
         }}
     ];
 

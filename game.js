@@ -886,6 +886,15 @@
             isClearing = false;
         }
 
+        // Expose ghost piece logic for testing
+        window._ghost = {
+            getGhostY,
+            get currentPiece() { return currentPiece; },
+            get board() { return board; },
+            BOARD_WIDTH,
+            BOARD_HEIGHT
+        };
+
         // Expose flash animation state for testing
         window._flashAnimation = {
             get clearingRows() { return clearingRows; },
@@ -913,25 +922,58 @@
             }
         }
 
+        // Calculate ghost piece Y position (pure function, testable)
+        function getGhostY(piece, boardState) {
+            let ghostY = piece.y;
+            // Simulate isValidMove inline using boardState
+            const canMove = (dy) => {
+                for (let row = 0; row < piece.shape.length; row++) {
+                    for (let col = 0; col < piece.shape[row].length; col++) {
+                        if (piece.shape[row][col] === 1) {
+                            const newX = piece.x + col;
+                            const newY = piece.y + row + dy;
+                            if (newX < 0 || newX >= boardState[0].length ||
+                                newY >= boardState.length ||
+                                (newY >= 0 && boardState[newY][newX] !== 0)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            };
+            while (canMove(ghostY - piece.y + 1)) {
+                ghostY++;
+            }
+            return ghostY;
+        }
+
         // Draw ghost piece (landing preview)
         function drawGhost() {
             if (!currentPiece) return;
-            let ghostY = currentPiece.y;
-            while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
-                ghostY++;
-            }
+            // Don't render ghost during line-clear animations
+            if (clearingRows.length > 0) return;
+
+            const ghostY = getGhostY(currentPiece, board);
             if (ghostY === currentPiece.y) return;
 
             ctx.save();
-            ctx.globalAlpha = 0.2;
+            ctx.globalAlpha = 0.28;
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
                     if (currentPiece.shape[row][col] === 1) {
                         const x = (currentPiece.x + col) * BLOCK_SIZE;
                         const y = (ghostY + row) * BLOCK_SIZE;
+                        // Render filled neon block at reduced opacity
+                        drawNeonBlock(x, y, currentPiece.color, currentPiece.glowBase, 1);
+                        // Add dashed border to distinguish ghost from active piece
+                        ctx.setLineDash([3, 3]);
                         ctx.strokeStyle = currentPiece.color;
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.lineWidth = 1.2;
+                        ctx.globalAlpha = 0.5;
+                        ctx.strokeRect(x + 0.5, y + 0.5, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 0.28;
                     }
                 }
             }
