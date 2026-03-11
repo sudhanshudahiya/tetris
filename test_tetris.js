@@ -592,6 +592,27 @@ function testTetrisRequirements() {
             const nextFn = content.indexOf('\n        function ', idx + 1);
             const body = content.substring(idx, nextFn > idx ? nextFn : idx + 3000);
             return body.includes('drawGhost()');
+        }},
+
+        // Ghost piece additional validation tests
+        { name: 'Ghost: drawGhost function exists', test: () => {
+            return gameContent.includes('function drawGhost()');
+        }},
+        { name: 'Ghost: skips rendering during line-clear', test: () => {
+            return gameContent.includes('clearingRows.length > 0') &&
+                   /drawGhost[\s\S]{0,500}clearingRows\.length\s*>\s*0/.test(gameContent);
+        }},
+        { name: 'Ghost: uses dashed border for distinction', test: () => {
+            return /drawGhost[\s\S]*setLineDash/.test(gameContent);
+        }},
+        { name: 'Ghost: uses piece color for rendering (regex)', test: () => {
+            return /drawGhost[\s\S]*currentPiece\.color/.test(gameContent);
+        }},
+        { name: 'Ghost: called in drawBoard (regex)', test: () => {
+            return /drawBoard[\s\S]*drawGhost\(\)/.test(gameContent);
+        }},
+        { name: 'Ghost: skips when piece at ghost position', test: () => {
+            return /ghostY\s*===\s*currentPiece\.y.*return/.test(gameContent);
         }}
     ];
 

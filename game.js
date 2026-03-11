@@ -951,6 +951,9 @@
         // Draw ghost piece (landing preview)
         function drawGhost() {
             if (!currentPiece) return;
+            // Don't render ghost during line-clear animations
+            if (clearingRows.length > 0) return;
+
             const ghostY = getGhostY(currentPiece, board);
             if (ghostY === currentPiece.y) return;
 
