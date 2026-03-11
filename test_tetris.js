@@ -393,7 +393,38 @@ function testTetrisRequirements() {
         { name: 'Leaderboard: CSS initials-input', test: () => htmlContent.includes('.initials-input') },
 
         // Leaderboard exposed for testing
-        { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') }
+        { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') },
+
+        // ── Delta-Time Normalization ──────────────────────────────────
+        // gameStep function exists and uses deltaTime with Math.min cap
+        { name: 'Delta-time: gameStep uses deltaTime with Math.min cap', test: () => {
+            return gameContent.includes('function gameStep(time)') &&
+                   /Math\.min\(.*deltaTime|Math\.min\(.*time\s*-\s*lastTime/.test(gameContent);
+        }},
+
+        // bgLoop accepts a timestamp parameter (delta-time pattern, not bare time++)
+        { name: 'Delta-time: bgLoop accepts timestamp parameter', test: () => {
+            return /function bgLoop\s*\(\s*\w+\s*\)/.test(gameContent);
+        }},
+
+        // bgLoop uses delta-time pattern instead of bare time++
+        { name: 'Delta-time: bgLoop uses delta-time pattern', test: () => {
+            const idx = gameContent.indexOf('function bgLoop');
+            const nextFn = gameContent.indexOf('\n            function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            // Should NOT have bare `time++`, should have delta-based time increment
+            return !body.includes('time++') && /bgDeltaTime|deltaTime|timestamp/.test(body);
+        }},
+
+        // No setInterval calls in game.js
+        { name: 'Delta-time: no setInterval in game.js', test: () => {
+            return !gameContent.includes('setInterval');
+        }},
+
+        // Delta cap constant exists (Math.min with cap value)
+        { name: 'Delta-time: delta cap constant exists', test: () => {
+            return /Math\.min\(.*,\s*100\)/.test(gameContent);
+        }}
     ];
 
     console.log('Testing Tetris Game Requirements...\n');
