@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tetris Game</title>
     <style>
         * {
@@ -20,6 +20,8 @@
             min-height: 100vh;
             color: white;
             overflow: hidden;
+            overscroll-behavior: none;        /* prevent pull-to-refresh */
+            -webkit-touch-callout: none;      /* prevent iOS callout menu */
         }
 
         /* Animated background canvas */
@@ -80,6 +82,10 @@
             box-shadow:
                 0 0 20px rgba(0, 255, 255, 0.3),
                 inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .game-board {
+            touch-action: none;         /* prevent browser gestures on game board container */
         }
 
         canvas#gameCanvas {
@@ -557,9 +563,9 @@
                     <div class="control-item"><kbd>P</kbd> Pause</div>
                 </div>
                 <div class="touch-controls">
-                    <div class="control-item"><kbd>Swipe ← →</kbd> Move</div>
-                    <div class="control-item"><kbd>Swipe ↓</kbd> Soft Drop</div>
-                    <div class="control-item"><kbd>Fast ↓</kbd> Hard Drop</div>
+                    <div class="control-item"><kbd>Drag ← →</kbd> Move</div>
+                    <div class="control-item"><kbd>Drag ↓</kbd> Soft Drop</div>
+                    <div class="control-item"><kbd>Hold</kbd> Hard Drop</div>
                     <div class="control-item"><kbd>Tap / ↑</kbd> Rotate</div>
                 </div>
             </div>
