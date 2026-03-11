@@ -5,25 +5,31 @@ const path = require('path');
 
 function testTetrisRequirements() {
     const htmlFile = path.join(__dirname, 'index.html');
+    const gameFile = path.join(__dirname, 'game.js');
 
     if (!fs.existsSync(htmlFile)) {
         throw new Error('index.html file not found');
     }
+    if (!fs.existsSync(gameFile)) {
+        throw new Error('game.js file not found');
+    }
 
-    const content = fs.readFileSync(htmlFile, 'utf8');
+    const htmlContent = fs.readFileSync(htmlFile, 'utf8');
+    const gameContent = fs.readFileSync(gameFile, 'utf8');
+    const content = htmlContent + '\n' + gameContent;
 
     const tests = [
-        // Single file requirement
-        { name: 'Single HTML file', test: () => content.includes('<!DOCTYPE html>') },
+        // HTML structure requirement
+        { name: 'Single HTML file', test: () => htmlContent.includes('<!DOCTYPE html>') },
 
         // Inline styles requirement
-        { name: 'Inline CSS styles', test: () => content.includes('<style>') && content.includes('</style>') },
+        { name: 'Inline CSS styles', test: () => htmlContent.includes('<style>') && htmlContent.includes('</style>') },
 
-        // Inline JavaScript requirement
-        { name: 'Inline JavaScript', test: () => content.includes('<script>') && content.includes('</script>') },
+        // External JavaScript requirement (game logic extracted to game.js)
+        { name: 'External JavaScript', test: () => htmlContent.includes('<script src="game.js"') && htmlContent.includes('</script>') },
 
         // Game board rendering
-        { name: 'Game board canvas', test: () => content.includes('<canvas') && content.includes('gameCanvas') },
+        { name: 'Game board canvas', test: () => htmlContent.includes('<canvas') && htmlContent.includes('gameCanvas') },
 
         // Piece movement controls
         { name: 'Arrow key movement', test: () => content.includes('ArrowLeft') && content.includes('ArrowRight') && content.includes('ArrowDown') },
@@ -38,16 +44,16 @@ function testTetrisRequirements() {
         { name: 'Score tracking', test: () => content.includes('score') && content.includes('updateDisplay') },
 
         // Game over detection
-        { name: 'Game over detection', test: () => content.includes('gameOver') && content.includes('Game Over') },
+        { name: 'Game over detection', test: () => content.includes('gameOver') && htmlContent.includes('Game Over') },
 
         // Start/Restart buttons
-        { name: 'Start button', test: () => content.includes('startGame') && content.includes('Start Game') },
-        { name: 'Restart button', test: () => content.includes('restartGame') && content.includes('Restart') },
+        { name: 'Start button', test: () => content.includes('startGame') && htmlContent.includes('Start Game') },
+        { name: 'Restart button', test: () => content.includes('restartGame') && htmlContent.includes('Restart') },
 
         // Additional UI features
-        { name: 'Pause functionality', test: () => content.includes('pauseGame') && content.includes('Pause') },
-        { name: 'Level tracking', test: () => content.includes('level') && content.includes('Level') },
-        { name: 'Lines tracking', test: () => content.includes('lines') && content.includes('Lines') },
+        { name: 'Pause functionality', test: () => content.includes('pauseGame') && htmlContent.includes('Pause') },
+        { name: 'Level tracking', test: () => content.includes('level') && htmlContent.includes('Level') },
+        { name: 'Lines tracking', test: () => content.includes('lines') && htmlContent.includes('Lines') },
 
         // Hard drop feature
         { name: 'Hard drop (spacebar)', test: () => content.includes("' '") || content.includes("case ' '") },
@@ -59,17 +65,17 @@ function testTetrisRequirements() {
         { name: 'Proper board size', test: () => content.includes('BOARD_WIDTH') && content.includes('BOARD_HEIGHT') },
 
         // Responsive design
-        { name: 'Responsive CSS', test: () => content.includes('@media') && content.includes('768px') },
+        { name: 'Responsive CSS', test: () => htmlContent.includes('@media') && htmlContent.includes('768px') },
 
         // =====================================================
         // NEXT PIECE PREVIEW TESTS
         // =====================================================
 
         // Next piece preview canvas exists
-        { name: 'Next piece preview canvas', test: () => content.includes('nextPieceCanvas') && content.includes('<canvas id="nextPieceCanvas"') },
+        { name: 'Next piece preview canvas', test: () => htmlContent.includes('nextPieceCanvas') && htmlContent.includes('<canvas id="nextPieceCanvas"') },
 
         // Next piece preview panel UI
-        { name: 'Next piece preview panel', test: () => content.includes('next-piece-panel') && content.includes('NEXT') },
+        { name: 'Next piece preview panel', test: () => htmlContent.includes('next-piece-panel') && htmlContent.includes('NEXT') },
 
         // Next piece state variable
         { name: 'Next piece state variable', test: () => content.includes('let nextPiece') },
@@ -110,7 +116,7 @@ function testTetrisRequirements() {
         }},
 
         // Next piece CSS styling
-        { name: 'Next piece panel styling', test: () => content.includes('.next-piece-panel') && content.includes('.next-piece-canvas-wrapper') },
+        { name: 'Next piece panel styling', test: () => htmlContent.includes('.next-piece-panel') && htmlContent.includes('.next-piece-canvas-wrapper') },
 
         // Next piece neon rendering (glow effect on preview)
         { name: 'Next piece neon glow rendering', test: () => {
@@ -156,14 +162,14 @@ function testTetrisRequirements() {
         { name: 'preventDefault on touch events', test: () => content.includes('e.preventDefault()') },
 
         // CSS touch-action: none on canvas
-        { name: 'CSS touch-action: none on canvas', test: () => content.includes('touch-action: none') },
+        { name: 'CSS touch-action: none on canvas', test: () => htmlContent.includes('touch-action: none') },
 
         // Touch controls UI hint for mobile
-        { name: 'Touch controls UI section', test: () => content.includes('touch-controls') && content.includes('Swipe') },
+        { name: 'Touch controls UI section', test: () => htmlContent.includes('touch-controls') && htmlContent.includes('Swipe') },
 
         // Touch controls visibility: hidden on desktop, shown on touch devices
-        { name: 'Touch controls hidden by default', test: () => content.includes('.touch-controls') && content.includes('display: none') },
-        { name: 'Touch controls shown on touch devices', test: () => content.includes('pointer: coarse') },
+        { name: 'Touch controls hidden by default', test: () => htmlContent.includes('.touch-controls') && htmlContent.includes('display: none') },
+        { name: 'Touch controls shown on touch devices', test: () => htmlContent.includes('pointer: coarse') },
 
         // Exposed for testing
         { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
@@ -183,9 +189,13 @@ function testTetrisRequirements() {
 
         // clearLines() no longer calls board.splice directly
         { name: 'clearLines does not splice board directly', test: () => {
-            // Extract the clearLines function body
-            const clMatch = content.match(/function clearLines\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return clMatch && !clMatch[1].includes('board.splice');
+            const idx = content.indexOf('function clearLines()');
+            // Find next function declaration (may be indented)
+            const afterIdx = idx + 'function clearLines()'.length;
+            const match = content.substring(afterIdx).match(/\n\s*function\s/);
+            const nextFn = match ? afterIdx + match.index : -1;
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.length > 0 && !body.includes('board.splice');
         }},
 
         // finishClearLines() function exists for deferred row removal
@@ -193,8 +203,10 @@ function testTetrisRequirements() {
 
         // finishClearLines() performs the actual board.splice
         { name: 'finishClearLines splices the board', test: () => {
-            const flMatch = content.match(/function finishClearLines\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return flMatch && flMatch[1].includes('board.splice');
+            const idx = content.indexOf('function finishClearLines()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('board.splice');
         }},
 
         // gameStep() checks clearingRows to pause piece drops
@@ -202,8 +214,10 @@ function testTetrisRequirements() {
 
         // gameStep() calls finishClearLines after animation duration
         { name: 'gameStep calls finishClearLines after animation', test: () => {
-            const gsMatch = content.match(/function gameStep\(time\)\s*\{([\s\S]*?)\n {8}\}/);
-            return gsMatch && gsMatch[1].includes('finishClearLines()');
+            const idx = content.indexOf('function gameStep(time)');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('finishClearLines()');
         }},
 
         // Flash effect rendering: white overlay on clearing rows
@@ -214,14 +228,18 @@ function testTetrisRequirements() {
 
         // clearingRows is reset in startGame
         { name: 'clearingRows reset in startGame', test: () => {
-            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return sgMatch && sgMatch[1].includes('clearingRows = []');
+            const idx = content.indexOf('function startGame()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('clearingRows = []');
         }},
 
         // clearingRows is reset in restartGame
         { name: 'clearingRows reset in restartGame', test: () => {
-            const rgMatch = content.match(/function restartGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return rgMatch && rgMatch[1].includes('clearingRows = []');
+            const idx = content.indexOf('function restartGame()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('clearingRows = []');
         }},
 
         // Input blocked during clearing animation
@@ -232,8 +250,10 @@ function testTetrisRequirements() {
 
         // placePiece defers spawning when clearing
         { name: 'placePiece defers spawn during clearing', test: () => {
-            const ppMatch = content.match(/function placePiece\(\)\s*\{([\s\S]*?)\n {8}\}/);
-            return ppMatch && ppMatch[1].includes('clearingRows.length === 0') && ppMatch[1].includes('spawnNextPiece()');
+            const idx = content.indexOf('function placePiece()');
+            const nextFn = content.indexOf('\nfunction ', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('clearingRows.length === 0') && body.includes('spawnNextPiece()');
         }},
 
         // ── Line-Clear Flash Animation (branch 68200bdb) ─────────────────────────
@@ -303,7 +323,74 @@ function testTetrisRequirements() {
         { name: 'Flash: piece not spawned during clearing', test: () => content.includes('if (!isClearing)') && content.includes('createPiece') },
 
         // Exposed for testing
-        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') }
+        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') },
+
+        // ── Leaderboard / High Score Persistence ──────────────────────
+        // localStorage key constant
+        { name: 'Leaderboard: LEADERBOARD_KEY defined', test: () => content.includes('LEADERBOARD_KEY') && content.includes('tetris_leaderboard') },
+
+        // Max entries constant
+        { name: 'Leaderboard: MAX_LEADERBOARD_ENTRIES defined', test: () => content.includes('MAX_LEADERBOARD_ENTRIES') && content.includes('10') },
+
+        // getLeaderboard function
+        { name: 'Leaderboard: getLeaderboard function', test: () => content.includes('function getLeaderboard') && content.includes('localStorage.getItem') },
+
+        // saveScore function
+        { name: 'Leaderboard: saveScore function', test: () => content.includes('function saveScore') && content.includes('localStorage.setItem') },
+
+        // isHighScore function
+        { name: 'Leaderboard: isHighScore function', test: () => content.includes('function isHighScore') },
+
+        // renderLeaderboard function
+        { name: 'Leaderboard: renderLeaderboard function', test: () => content.includes('function renderLeaderboard') && content.includes('leaderboardBody') },
+
+        // submitScore function
+        { name: 'Leaderboard: submitScore function', test: () => content.includes('function submitScore') && content.includes('initialsInput') },
+
+        // gameOver calls isHighScore
+        { name: 'Leaderboard: gameOver calls isHighScore', test: () => {
+            const idx = content.indexOf('function gameOver');
+            const nextFn = content.indexOf('\n        function startNewGame', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('isHighScore(score)');
+        }},
+
+        // gameOver calls renderLeaderboard
+        { name: 'Leaderboard: gameOver calls renderLeaderboard', test: () => {
+            const idx = content.indexOf('function gameOver');
+            const nextFn = content.indexOf('\n        function startNewGame', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('renderLeaderboard()');
+        }},
+
+        // gameOver shows/hides highScoreSection
+        { name: 'Leaderboard: gameOver toggles highScoreSection', test: () => {
+            const idx = content.indexOf('function gameOver');
+            const nextFn = content.indexOf('\n        function startNewGame', idx + 1);
+            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('highScoreSection');
+        }},
+
+        // HTML: leaderboard table exists
+        { name: 'Leaderboard: HTML table structure', test: () => htmlContent.includes('leaderboard-table') && htmlContent.includes('leaderboardBody') },
+
+        // HTML: initials input exists
+        { name: 'Leaderboard: HTML initials input', test: () => htmlContent.includes('initialsInput') && htmlContent.includes('initials-input') },
+
+        // HTML: submit score button
+        { name: 'Leaderboard: HTML submit score button', test: () => htmlContent.includes('submitScore()') && htmlContent.includes('Submit Score') },
+
+        // HTML: highScoreSection container
+        { name: 'Leaderboard: HTML highScoreSection', test: () => htmlContent.includes('highScoreSection') && htmlContent.includes('high-score-section') },
+
+        // CSS: leaderboard table styling
+        { name: 'Leaderboard: CSS leaderboard-table', test: () => htmlContent.includes('.leaderboard-table') },
+
+        // CSS: initials input styling
+        { name: 'Leaderboard: CSS initials-input', test: () => htmlContent.includes('.initials-input') },
+
+        // Leaderboard exposed for testing
+        { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') }
     ];
 
     console.log('Testing Tetris Game Requirements...\n');
