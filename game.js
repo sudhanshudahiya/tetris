@@ -955,15 +955,22 @@
             if (ghostY === currentPiece.y) return;
 
             ctx.save();
-            ctx.globalAlpha = 0.2;
+            ctx.globalAlpha = 0.28;
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
                     if (currentPiece.shape[row][col] === 1) {
                         const x = (currentPiece.x + col) * BLOCK_SIZE;
                         const y = (ghostY + row) * BLOCK_SIZE;
+                        // Render filled neon block at reduced opacity
+                        drawNeonBlock(x, y, currentPiece.color, currentPiece.glowBase, 1);
+                        // Add dashed border to distinguish ghost from active piece
+                        ctx.setLineDash([3, 3]);
                         ctx.strokeStyle = currentPiece.color;
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.lineWidth = 1.2;
+                        ctx.globalAlpha = 0.5;
+                        ctx.strokeRect(x + 0.5, y + 0.5, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 0.28;
                     }
                 }
             }
