@@ -482,6 +482,9 @@
         let clearAnimationStart = 0;        // timestamp when clear animation began
         let clearingStartTime = 0;          // alias timestamp for animation tracking
         let isClearing = false;             // flag indicating clearing in progress
+        let scoreFlashStart = 0;             // timestamp when score flash began
+        let scoreFlashAmount = 0;            // points earned for current flash
+        const SCORE_FLASH_DURATION = 600;    // ms for score increment animation
         const CLEAR_ANIMATION_DURATION = 400; // ms for the flash effect
         const FLASH_DURATION = 400; // ms for flash effect
 
@@ -797,37 +800,6 @@
             }
         }
 
-        // Finish clearing after flash animation completes
-        function finishClearing() {
-            // Sort descending so splicing doesn't shift indices
-            clearingRows.sort((a, b) => b - a);
-            const linesCleared = clearingRows.length;
-
-            for (const row of clearingRows) {
-                board.splice(row, 1);
-                board.unshift(new Array(BOARD_WIDTH).fill(0));
-            }
-
-            if (linesCleared > 0) {
-                const lineValues = [0, 40, 100, 300, 1200];
-                score += lineValues[linesCleared] * level;
-                lines += linesCleared;
-                level = Math.floor(lines / 10) + 1;
-                updateDisplay();
-            }
-
-            clearingRows = [];
-            isClearing = false;
-
-            // Create new piece after animation
-            currentPiece = createPiece();
-
-            // Check game over
-            if (!isValidMove(currentPiece, 0, 0)) {
-                gameOver();
-            }
-        }
-
         // Complete line clear after flash animation finishes
         function completeClear() {
             const linesCleared = clearingRows.length;
@@ -842,13 +814,20 @@
 
             // Reset clearing state
             clearingRows = [];
+            clearAnimationStart = 0;
             isClearing = false;
 
             if (linesCleared > 0) {
-                const lineValues = [0, 40, 100, 300, 1200];
-                score += lineValues[linesCleared] * level;
+                // Flat 100 points per line cleared
+                const pointsEarned = linesCleared * 100;
+                score += pointsEarned;
                 lines += linesCleared;
                 level = Math.floor(lines / 10) + 1;
+
+                // Trigger score flash animation
+                scoreFlashStart = performance.now();
+                scoreFlashAmount = pointsEarned;
+
                 updateDisplay();
             }
 
@@ -859,32 +838,9 @@
             }
         }
 
-        // Finish clearing: splice rows, update score, spawn next piece
-        function finishClearLines() {
-            const linesCleared = clearingRows.length;
-
-            // Sort descending so splicing from bottom up doesn't shift indices
-            clearingRows.sort((a, b) => b - a);
-            for (const row of clearingRows) {
-                board.splice(row, 1);
-                board.unshift(new Array(BOARD_WIDTH).fill(0));
-            }
-
-            // Update score
-            const lineValues = [0, 40, 100, 300, 1200];
-            score += lineValues[linesCleared] * level;
-            lines += linesCleared;
-
-            // Level up every 10 lines
-            level = Math.floor(lines / 10) + 1;
-
-            updateDisplay();
-
-            // Reset clearing state
-            clearingRows = [];
-            clearAnimationStart = 0;
-            isClearing = false;
-        }
+        // Aliases for backward compatibility with tests and existing code paths
+        function finishClearing() { completeClear(); }
+        function finishClearLines() { completeClear(); }
 
         // Expose ghost piece logic for testing
         window._ghost = {
@@ -902,6 +858,13 @@
             get clearAnimationStart() { return clearAnimationStart; },
             FLASH_DURATION,
             completeClear
+        };
+
+        // Expose score flash animation state for testing
+        window._scoreFlash = {
+            get scoreFlashStart() { return scoreFlashStart; },
+            get scoreFlashAmount() { return scoreFlashAmount; },
+            SCORE_FLASH_DURATION
         };
 
         // Draw grid lines on board
@@ -1054,13 +1017,48 @@
                     }
                 }
             }
+
+            // Draw score flash animation overlay
+            drawScoreFlash();
         }
 
         // Update display elements
         function updateDisplay() {
-            document.getElementById('score').textContent = score;
+            const scoreEl = document.getElementById('score');
+            scoreEl.textContent = score;
             document.getElementById('lines').textContent = lines;
             document.getElementById('level').textContent = level;
+
+            // Trigger CSS flash animation on score change
+            if (scoreFlashAmount > 0) {
+                scoreEl.classList.remove('score-flash');
+                // Force reflow to restart animation
+                void scoreEl.offsetWidth;
+                scoreEl.classList.add('score-flash');
+            }
+        }
+
+        // Render score flash animation (floating +N text)
+        function drawScoreFlash() {
+            if (scoreFlashStart === 0) return;
+            const elapsed = performance.now() - scoreFlashStart;
+            if (elapsed >= SCORE_FLASH_DURATION) {
+                scoreFlashStart = 0;
+                scoreFlashAmount = 0;
+                return;
+            }
+            const progress = elapsed / SCORE_FLASH_DURATION;
+            const alpha = 1 - progress;
+            const yOffset = progress * 40; // float upward
+
+            ctx.save();
+            ctx.font = 'bold 22px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+            ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+            ctx.shadowBlur = 12;
+            ctx.fillText(`+${scoreFlashAmount}`, canvas.width / 2, 30 - yOffset + 40);
+            ctx.restore();
         }
 
         // Game loop
@@ -1511,6 +1509,8 @@
             clearingRows = [];
             clearAnimationStart = 0;
             isClearing = false;
+            scoreFlashStart = 0;
+            scoreFlashAmount = 0;
 
             updateDisplay();
             document.getElementById('gameOverModal').style.display = 'none';
@@ -1537,6 +1537,8 @@
             clearingRows = [];
             clearAnimationStart = 0;
             isClearing = false;
+            scoreFlashStart = 0;
+            scoreFlashAmount = 0;
             nextPiece = null;
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);

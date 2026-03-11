@@ -229,12 +229,12 @@ function testTetrisRequirements() {
         // finishClearLines() function exists for deferred row removal
         { name: 'finishClearLines function exists', test: () => content.includes('function finishClearLines()') },
 
-        // finishClearLines() performs the actual board.splice
+        // finishClearLines() delegates to completeClear which performs board.splice
         { name: 'finishClearLines splices the board', test: () => {
-            const idx = content.indexOf('function finishClearLines()');
-            const nextFn = content.indexOf('\nfunction ', idx + 1);
-            const body = content.substring(idx, nextFn > idx ? nextFn : idx + 2000);
-            return body.includes('board.splice');
+            // finishClearLines delegates to completeClear, which does board.splice
+            return content.includes('function finishClearLines') &&
+                   content.includes('function completeClear') &&
+                   content.includes('board.splice');
         }},
 
         // gameStep() checks clearingRows to pause piece drops
@@ -641,6 +641,80 @@ function testTetrisRequirements() {
         }},
         { name: 'Ghost: skips when piece at ghost position', test: () => {
             return /ghostY\s*===\s*currentPiece\.y.*return/.test(gameContent);
+        }},
+
+        // ── Flat Scoring (100 points per line) ────────────────────────────
+        // No NES lineValues scoring
+        { name: 'Scoring: no NES lineValues lookup', test: () => {
+            return !gameContent.includes('lineValues');
+        }},
+        // Flat 100 points per line cleared
+        { name: 'Scoring: flat 100 points per line', test: () => {
+            return gameContent.includes('linesCleared * 100');
+        }},
+        // No level multiplier on scoring
+        { name: 'Scoring: no level multiplier on score', test: () => {
+            // completeClear should not multiply by level
+            const idx = gameContent.indexOf('function completeClear');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return !body.includes('* level');
+        }},
+        // Single scoring function (no duplicate scoring logic)
+        { name: 'Scoring: single scoring location in completeClear', test: () => {
+            // Only completeClear should have linesCleared * 100 scoring
+            const matches = gameContent.match(/linesCleared\s*\*\s*100/g);
+            return matches && matches.length === 1;
+        }},
+        // finishClearing and finishClearLines delegate to completeClear
+        { name: 'Scoring: finishClearing delegates to completeClear', test: () => {
+            const idx = gameContent.indexOf('function finishClearing');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('completeClear()');
+        }},
+        { name: 'Scoring: finishClearLines delegates to completeClear', test: () => {
+            const idx = gameContent.indexOf('function finishClearLines');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('completeClear()');
+        }},
+
+        // ── Score Flash Animation ─────────────────────────────────────────
+        // Score flash state variables
+        { name: 'Score flash: scoreFlashStart variable', test: () => gameContent.includes('let scoreFlashStart') },
+        { name: 'Score flash: scoreFlashAmount variable', test: () => gameContent.includes('let scoreFlashAmount') },
+        { name: 'Score flash: SCORE_FLASH_DURATION constant', test: () => gameContent.includes('SCORE_FLASH_DURATION') },
+        // drawScoreFlash function exists
+        { name: 'Score flash: drawScoreFlash function exists', test: () => gameContent.includes('function drawScoreFlash') },
+        // drawScoreFlash called in drawBoard
+        { name: 'Score flash: called in drawBoard', test: () => {
+            return /drawBoard[\s\S]*drawScoreFlash\(\)/.test(gameContent);
+        }},
+        // Score flash triggered on line clear
+        { name: 'Score flash: triggered in completeClear', test: () => {
+            const idx = gameContent.indexOf('function completeClear');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('scoreFlashStart') && body.includes('scoreFlashAmount');
+        }},
+        // CSS score-flash class
+        { name: 'Score flash: CSS score-flash class', test: () => htmlContent.includes('.score-flash') && htmlContent.includes('scoreFlashPulse') },
+        // Score flash exposed for testing
+        { name: 'Score flash: state exposed for testing', test: () => gameContent.includes('window._scoreFlash') },
+        // Score flash reset on game start
+        { name: 'Score flash: reset on startGame', test: () => {
+            const idx = gameContent.indexOf('function startGame');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('scoreFlashStart = 0');
+        }},
+        // Score flash reset on restart
+        { name: 'Score flash: reset on restartGame', test: () => {
+            const idx = gameContent.indexOf('function restartGame');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return body.includes('scoreFlashStart = 0');
         }}
     ];
 
