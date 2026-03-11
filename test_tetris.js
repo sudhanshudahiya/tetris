@@ -393,7 +393,36 @@ function testTetrisRequirements() {
         { name: 'Leaderboard: CSS initials-input', test: () => htmlContent.includes('.initials-input') },
 
         // Leaderboard exposed for testing
-        { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') }
+        { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') },
+
+        // ── Delta-Time Hardening (issue a9a5ef6e) ──────────────────────────
+        // First-frame guard: skip frame when lastTime === 0
+        { name: 'Delta-time: first-frame guard checks lastTime === 0', test: () => content.includes('if (lastTime === 0)') },
+        { name: 'Delta-time: first-frame guard sets lastTime = time', test: () => {
+            const gsBody = content.substring(content.indexOf('function gameStep'));
+            return gsBody.includes('lastTime === 0') && gsBody.includes('lastTime = time');
+        }},
+        { name: 'Delta-time: first-frame guard re-schedules rAF', test: () => {
+            // After the lastTime === 0 check, there should be a requestAnimationFrame before return
+            const guardIdx = content.indexOf('if (lastTime === 0)');
+            const guardBlock = content.substring(guardIdx, guardIdx + 200);
+            return guardBlock.includes('requestAnimationFrame(gameStep)') && guardBlock.includes('return');
+        }},
+
+        // Delta-time cap at 100ms to prevent tab-switch jumps
+        { name: 'Delta-time: deltaTime capped with Math.min', test: () => content.includes('Math.min(time - lastTime, 100)') },
+
+        // startGame sets lastTime to 0 so first-frame guard triggers
+        { name: 'Delta-time: startGame sets lastTime = 0', test: () => {
+            const sgMatch = content.match(/function startGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
+            return sgMatch && sgMatch[1].includes('lastTime = 0');
+        }},
+
+        // pauseGame resume resets lastTime for smooth continuation
+        { name: 'Delta-time: pauseGame resets lastTime on resume', test: () => {
+            const pgMatch = content.match(/function pauseGame\(\)\s*\{([\s\S]*?)\n {8}\}/);
+            return pgMatch && pgMatch[1].includes('lastTime = performance.now()');
+        }}
     ];
 
     console.log('Testing Tetris Game Requirements...\n');

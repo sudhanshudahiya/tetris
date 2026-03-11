@@ -1033,7 +1033,15 @@
                 return;
             }
 
-            const deltaTime = time - lastTime;
+            // Guard against first-frame spike: skip frame when lastTime is unset
+            if (lastTime === 0) {
+                lastTime = time;
+                gameLoop = requestAnimationFrame(gameStep);
+                return;
+            }
+
+            // Cap deltaTime to 100ms to prevent huge drops after tab-switch or debugger pause
+            const deltaTime = Math.min(time - lastTime, 100);
             lastTime = time;
 
             // If rows are being cleared, pause piece drops and run animation
