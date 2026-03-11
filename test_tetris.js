@@ -453,6 +453,33 @@ function testTetrisRequirements() {
         // Delta cap constant exists (Math.min with cap value)
         { name: 'Delta-time: delta cap constant exists', test: () => {
             return /Math\.min\(.*,\s*100\)/.test(gameContent);
+        }},
+
+        // Ghost piece tests
+        { name: 'Ghost: drawGhost function exists', test: () => {
+            return gameContent.includes('function drawGhost()');
+        }},
+        { name: 'Ghost: skips rendering during line-clear', test: () => {
+            return gameContent.includes('clearingRows.length > 0') &&
+                   /drawGhost[\s\S]{0,200}clearingRows\.length\s*>\s*0/.test(gameContent);
+        }},
+        { name: 'Ghost: uses isValidMove for drop position', test: () => {
+            return /drawGhost[\s\S]*isValidMove/.test(gameContent);
+        }},
+        { name: 'Ghost: uses dashed border for distinction', test: () => {
+            return /drawGhost[\s\S]*setLineDash/.test(gameContent);
+        }},
+        { name: 'Ghost: subtle fill alpha for visibility', test: () => {
+            return /drawGhost[\s\S]*globalAlpha\s*=\s*0\.12/.test(gameContent);
+        }},
+        { name: 'Ghost: uses piece color for rendering', test: () => {
+            return /drawGhost[\s\S]*currentPiece\.color/.test(gameContent);
+        }},
+        { name: 'Ghost: called in drawBoard', test: () => {
+            return /drawBoard[\s\S]*drawGhost\(\)/.test(gameContent);
+        }},
+        { name: 'Ghost: skips when piece at ghost position', test: () => {
+            return /ghostY\s*===\s*currentPiece\.y.*return/.test(gameContent);
         }}
     ];
 

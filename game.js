@@ -916,6 +916,9 @@
         // Draw ghost piece (landing preview)
         function drawGhost() {
             if (!currentPiece) return;
+            // Don't render ghost during line-clear animations
+            if (clearingRows.length > 0) return;
+
             let ghostY = currentPiece.y;
             while (isValidMove(currentPiece, 0, ghostY - currentPiece.y + 1)) {
                 ghostY++;
@@ -923,15 +926,24 @@
             if (ghostY === currentPiece.y) return;
 
             ctx.save();
-            ctx.globalAlpha = 0.2;
             for (let row = 0; row < currentPiece.shape.length; row++) {
                 for (let col = 0; col < currentPiece.shape[row].length; col++) {
                     if (currentPiece.shape[row][col] === 1) {
                         const x = (currentPiece.x + col) * BLOCK_SIZE;
                         const y = (ghostY + row) * BLOCK_SIZE;
+
+                        // Subtle filled ghost block with piece color
+                        ctx.globalAlpha = 0.12;
+                        ctx.fillStyle = currentPiece.color;
+                        ctx.fillRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+
+                        // Dashed neon border for clear distinction from active piece
+                        ctx.globalAlpha = 0.35;
                         ctx.strokeStyle = currentPiece.color;
                         ctx.lineWidth = 1;
+                        ctx.setLineDash([3, 3]);
                         ctx.strokeRect(x + 1, y + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                        ctx.setLineDash([]);
                     }
                 }
             }
