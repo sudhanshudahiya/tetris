@@ -483,6 +483,45 @@ function testTetrisRequirements() {
             return /Math\.min\(.*,\s*100\)/.test(gameContent);
         }},
 
+        // ── DAS / ARR Input System ─────────────────────────────────────
+        // DAS_DELAY constant exists
+        { name: 'DAS: DAS_DELAY constant exists', test: () => gameContent.includes('DAS_DELAY') },
+
+        // ARR_INTERVAL constant exists
+        { name: 'DAS: ARR_INTERVAL constant exists', test: () => gameContent.includes('ARR_INTERVAL') },
+
+        // DAS_DELAY value is 167 (guideline spec)
+        { name: 'DAS: DAS_DELAY value is 167', test: () => /DAS_DELAY\s*=\s*167/.test(gameContent) },
+
+        // ARR_INTERVAL value is 33 (guideline spec)
+        { name: 'DAS: ARR_INTERVAL value is 33', test: () => /ARR_INTERVAL\s*=\s*33/.test(gameContent) },
+
+        // keydown event listener present
+        { name: 'DAS: keydown event listener present', test: () => gameContent.includes("addEventListener('keydown'") },
+
+        // keyup event listener present
+        { name: 'DAS: keyup event listener present', test: () => gameContent.includes("addEventListener('keyup'") },
+
+        // processInput function exists
+        { name: 'DAS: processInput function exists', test: () => gameContent.includes('function processInput') },
+
+        // keysDown state tracking exists
+        { name: 'DAS: keysDown state tracking exists', test: () => gameContent.includes('keysDown') },
+
+        // keyTimers state tracking exists
+        { name: 'DAS: keyTimers state tracking exists', test: () => gameContent.includes('keyTimers') },
+
+        // processInput called in gameStep
+        { name: 'DAS: processInput called in gameStep', test: () => {
+            const idx = gameContent.indexOf('function gameStep(time)');
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 3000);
+            return body.includes('processInput(deltaTime)');
+        }},
+
+        // No e.repeat reliance
+        { name: 'DAS: no e.repeat reliance', test: () => !gameContent.includes('e.repeat') },
+
         // ── Ghost Piece (Drop-Position Preview) ──────────────────────────
         // getGhostY pure function exists
         { name: 'Ghost: getGhostY pure function exists', test: () => content.includes('function getGhostY(piece, boardState)') },
