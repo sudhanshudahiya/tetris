@@ -323,7 +323,38 @@ function testTetrisRequirements() {
         { name: 'Flash: piece not spawned during clearing', test: () => content.includes('if (!isClearing)') && content.includes('createPiece') },
 
         // Exposed for testing
-        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') }
+        { name: 'Flash: animation state exposed for testing', test: () => content.includes('window._flashAnimation') },
+
+        // ── Leaderboard / localStorage High Score Persistence ─────────
+        // localStorage key referenced
+        { name: 'Leaderboard: localStorage key tetris_leaderboard', test: () => content.includes("'tetris_leaderboard'") },
+
+        // getLeaderboard function exists
+        { name: 'Leaderboard: getLeaderboard function exists', test: () => content.includes('function getLeaderboard') },
+
+        // saveScore function exists
+        { name: 'Leaderboard: saveScore function exists', test: () => content.includes('function saveScore') },
+
+        // isHighScore function exists
+        { name: 'Leaderboard: isHighScore function exists', test: () => content.includes('function isHighScore') },
+
+        // leaderboard table HTML exists in index.html
+        { name: 'Leaderboard: table HTML in index.html', test: () => htmlContent.includes('leaderboard-table') && htmlContent.includes('<table') },
+
+        // initials input exists
+        { name: 'Leaderboard: initials input exists', test: () => htmlContent.includes('initialsInput') && htmlContent.includes('<input') },
+
+        // submitScore function exists
+        { name: 'Leaderboard: submitScore function exists', test: () => content.includes('function submitScore') },
+
+        // renderLeaderboard function exists
+        { name: 'Leaderboard: renderLeaderboard function exists', test: () => content.includes('function renderLeaderboard') },
+
+        // window._leaderboard exposed for testing
+        { name: 'Leaderboard: window._leaderboard exposed for testing', test: () => content.includes('window._leaderboard') },
+
+        // clearLeaderboard function exists
+        { name: 'Leaderboard: clearLeaderboard function exists', test: () => content.includes('function clearLeaderboard') }
     ];
 
     console.log('Testing Tetris Game Requirements...\n');

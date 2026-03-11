@@ -1342,6 +1342,72 @@
             startGame();
         }
 
+        // ============================================================
+        //  LEADERBOARD — localStorage High Score Persistence
+        // ============================================================
+        const LEADERBOARD_KEY = 'tetris_leaderboard';
+        const MAX_LEADERBOARD_ENTRIES = 10;
+
+        function getLeaderboard() {
+            try {
+                const data = localStorage.getItem(LEADERBOARD_KEY);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveScore(initials, scoreValue) {
+            const board2 = getLeaderboard();
+            board2.push({ initials: initials.toUpperCase(), score: scoreValue, date: Date.now() });
+            board2.sort((a, b) => b.score - a.score);
+            const trimmed = board2.slice(0, MAX_LEADERBOARD_ENTRIES);
+            localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(trimmed));
+            return trimmed;
+        }
+
+        function isHighScore(scoreValue) {
+            const board2 = getLeaderboard();
+            if (board2.length < MAX_LEADERBOARD_ENTRIES) return true;
+            return scoreValue > board2[board2.length - 1].score;
+        }
+
+        function submitScore() {
+            const input = document.getElementById('initialsInput');
+            if (!input) return;
+            const initials = input.value.trim().substring(0, 3) || 'AAA';
+            saveScore(initials, score);
+            input.value = '';
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            if (!tbody) return;
+            const board2 = getLeaderboard();
+            tbody.innerHTML = '';
+            board2.forEach((entry, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + (i + 1) + '</td><td>' + entry.initials + '</td><td>' + entry.score + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearLeaderboard() {
+            localStorage.removeItem(LEADERBOARD_KEY);
+            renderLeaderboard();
+        }
+
+        // Expose leaderboard for testing
+        window._leaderboard = {
+            getLeaderboard: getLeaderboard,
+            saveScore: saveScore,
+            isHighScore: isHighScore,
+            submitScore: submitScore,
+            renderLeaderboard: renderLeaderboard,
+            clearLeaderboard: clearLeaderboard
+        };
+
         // Initialize display
         updateDisplay();
         // Draw initial board grid
@@ -1351,3 +1417,5 @@
         // Clear next piece preview
         nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
         nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+        // Initialize leaderboard display
+        renderLeaderboard();
