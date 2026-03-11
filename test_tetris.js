@@ -165,7 +165,7 @@ function testTetrisRequirements() {
         { name: 'CSS touch-action: none on canvas', test: () => htmlContent.includes('touch-action: none') },
 
         // Touch controls UI hint for mobile
-        { name: 'Touch controls UI section', test: () => htmlContent.includes('touch-controls') && htmlContent.includes('Swipe') },
+        { name: 'Touch controls UI section', test: () => htmlContent.includes('touch-controls') && htmlContent.includes('Drag') },
 
         // Touch controls visibility: hidden on desktop, shown on touch devices
         { name: 'Touch controls hidden by default', test: () => htmlContent.includes('.touch-controls') && htmlContent.includes('display: none') },
@@ -173,6 +173,34 @@ function testTetrisRequirements() {
 
         // Exposed for testing
         { name: 'Touch controls exposed for testing', test: () => content.includes('window._touchControls') },
+
+        // ── Drag & Long-Press gesture support ──────────────────────
+        // Long press delay constant
+        { name: 'Long press delay defined', test: () => content.includes('LONG_PRESS_DELAY') },
+
+        // Cell size constant for drag-to-move
+        { name: 'Cell size for drag defined', test: () => content.includes('CELL_SIZE_PX') },
+
+        // Long press timer for hard drop
+        { name: 'Long press timer implemented', test: () => content.includes('longPressTimer') && content.includes('setTimeout') },
+
+        // Long press cancelled on finger movement
+        { name: 'Long press cancelled on move', test: () => content.includes('clearLongPress') && content.includes('totalDistance > TAP_MAX_DISTANCE') },
+
+        // Drag cell tracking during touchmove
+        { name: 'Drag cell tracking in touchmove', test: () => content.includes('dragCellsX') && content.includes('dragCellsY') },
+
+        // Long press + drag conflict: moving finger cancels long press
+        { name: 'Long press cancels on drag', test: () => content.includes('clearLongPress()') && content.includes('gestureDecided') },
+
+        // Viewport prevents zoom on mobile
+        { name: 'Viewport prevents zoom', test: () => htmlContent.includes('user-scalable=no') && htmlContent.includes('maximum-scale=1') },
+
+        // Overscroll behavior prevents pull-to-refresh
+        { name: 'Overscroll behavior set', test: () => htmlContent.includes('overscroll-behavior: none') },
+
+        // Game-over state blocks touch gestures
+        { name: 'Touch blocked when game not running', test: () => content.includes('!gameRunning') && content.includes('return') },
 
         // ── Line-Clear Animation (clearingRows state) ─────────────
         // clearingRows array declared in game state

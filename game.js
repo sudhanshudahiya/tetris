@@ -1175,18 +1175,26 @@
         (function initTouchControls() {
             const touchTarget = document.getElementById('gameCanvas');
 
-            // Swipe detection configuration
-            const SWIPE_THRESHOLD   = 30;   // min px distance to register a swipe
-            const SWIPE_MAX_TIME    = 400;  // max ms for a gesture to count as swipe
-            const TAP_MAX_DISTANCE  = 15;   // max px movement to count as a tap
-            const HARD_DROP_VELOCITY = 1.8; // px/ms — fast downward swipe triggers hard drop
-            const SOFT_DROP_REPEAT  = 80;   // ms interval for continuous soft drop
+            // ── Tunable thresholds ──────────────────────────────────
+            const SWIPE_THRESHOLD    = 30;   // min px distance to register a swipe
+            const SWIPE_MAX_TIME     = 400;  // max ms for a gesture to count as swipe
+            const TAP_MAX_DISTANCE   = 15;   // max px movement to count as a tap
+            const HARD_DROP_VELOCITY = 1.8;  // px/ms — fast downward swipe triggers hard drop
+            const LONG_PRESS_DELAY   = 500;  // ms — hold without moving to hard drop
+            const CELL_SIZE_PX       = 30;   // px per board cell (matches BLOCK_SIZE)
+            const SOFT_DROP_REPEAT   = 80;   // ms interval for continuous soft drop
 
-            let touchStartX = 0;
-            let touchStartY = 0;
-            let touchStartTime = 0;
-            let isTouching = false;
+            // ── Touch state ─────────────────────────────────────────
+            let touchStartX      = 0;
+            let touchStartY      = 0;
+            let touchStartTime   = 0;
+            let isTouching       = false;
             let softDropInterval = null;
+            let longPressTimer   = null;
+            let dragCellsX       = 0;   // how many full cells dragged horizontally
+            let dragCellsY       = 0;   // how many full cells dragged vertically
+            // (lastTouchX/Y reserved for future gesture refinement)
+            let gestureDecided   = false; // true once we've committed to drag/long-press
 
             // Prevent scrolling / zooming on the game canvas
             touchTarget.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -1199,22 +1207,104 @@
                 if (e.touches.length !== 1) return; // ignore multi-touch
 
                 const touch = e.touches[0];
-                touchStartX = touch.clientX;
-                touchStartY = touch.clientY;
+                touchStartX    = touch.clientX;
+                touchStartY    = touch.clientY;
+                lastTouchX     = touch.clientX;
+                lastTouchY     = touch.clientY;
                 touchStartTime = Date.now();
-                isTouching = true;
+                isTouching     = true;
+                dragCellsX     = 0;
+                dragCellsY     = 0;
+                gestureDecided = false;
 
                 clearSoftDrop();
+                clearLongPress();
+
+                // Start long-press timer — fires hard drop if finger stays still
+                if (gameRunning && !gamePaused && !isClearing) {
+                    longPressTimer = setTimeout(function () {
+                        longPressTimer = null;
+                        if (!isTouching || !gameRunning || gamePaused || isClearing) return;
+                        if (!currentPiece) return;
+                        gestureDecided = true;
+
+                        // Hard drop
+                        while (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score += 2;
+                        }
+                        updateDisplay();
+                        placePiece();
+                        drawBoard();
+                        isTouching = false;
+                    }, LONG_PRESS_DELAY);
+                }
             }
 
             function handleTouchMove(e) {
                 e.preventDefault(); // prevent scroll while playing
+                if (!isTouching) return;
+                if (!gameRunning || gamePaused || isClearing) return;
+                if (!currentPiece) return;
+
+                const touch = e.touches[0];
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+                const totalDistance = Math.sqrt(dx * dx + dy * dy);
+
+                // If finger moves beyond tap threshold, cancel long-press
+                if (totalDistance > TAP_MAX_DISTANCE) {
+                    clearLongPress();
+                    gestureDecided = true;
+                }
+
+                // ── Drag left/right — move one cell per CELL_SIZE_PX of drag ──
+                const cellDx = Math.floor((touch.clientX - touchStartX) / CELL_SIZE_PX);
+                if (cellDx !== dragCellsX) {
+                    const delta = cellDx - dragCellsX;
+                    const dir = delta > 0 ? 1 : -1;
+                    const steps = Math.abs(delta);
+                    for (let i = 0; i < steps; i++) {
+                        if (isValidMove(currentPiece, dir, 0)) {
+                            currentPiece.x += dir;
+                        }
+                    }
+                    dragCellsX = cellDx;
+                    drawBoard();
+                }
+
+                // ── Drag down — soft drop one cell per CELL_SIZE_PX of downward drag ──
+                const cellDy = Math.floor((touch.clientY - touchStartY) / CELL_SIZE_PX);
+                if (cellDy > dragCellsY && cellDy > 0) {
+                    const dropSteps = cellDy - dragCellsY;
+                    for (let i = 0; i < dropSteps; i++) {
+                        if (isValidMove(currentPiece, 0, 1)) {
+                            currentPiece.y++;
+                            score++;
+                        }
+                    }
+                    dragCellsY = cellDy;
+                    updateDisplay();
+                    drawBoard();
+                }
+
+                // (touch position tracked for future gesture refinement)
             }
 
             function handleTouchEnd(e) {
                 e.preventDefault();
                 if (!isTouching) return;
                 isTouching = false;
+
+                clearLongPress();
+                clearSoftDrop();
+
+                // If gesture was already handled (drag or long-press), skip end logic
+                if (gestureDecided) return;
+
+                // Ignore if game isn't active or clearing animation in progress
+                if (!gameRunning || gamePaused || isClearing) return;
+                if (!currentPiece) return;
 
                 const touch = e.changedTouches[0];
                 const dx = touch.clientX - touchStartX;
@@ -1223,11 +1313,6 @@
                 const absDx = Math.abs(dx);
                 const absDy = Math.abs(dy);
                 const distance = Math.sqrt(dx * dx + dy * dy);
-
-                clearSoftDrop();
-
-                // Ignore if game isn't active or clearing animation in progress
-                if (!gameRunning || gamePaused || isClearing) return;
 
                 // ── TAP → Rotate ────────────────────────────────
                 if (distance < TAP_MAX_DISTANCE && dt < SWIPE_MAX_TIME) {
@@ -1292,6 +1377,7 @@
             function handleTouchCancel(e) {
                 isTouching = false;
                 clearSoftDrop();
+                clearLongPress();
             }
 
             function clearSoftDrop() {
@@ -1301,12 +1387,21 @@
                 }
             }
 
+            function clearLongPress() {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            }
+
             // Expose for testing
             window._touchControls = {
                 SWIPE_THRESHOLD,
                 SWIPE_MAX_TIME,
                 TAP_MAX_DISTANCE,
                 HARD_DROP_VELOCITY,
+                LONG_PRESS_DELAY,
+                CELL_SIZE_PX,
                 handleTouchStart,
                 handleTouchMove,
                 handleTouchEnd,
