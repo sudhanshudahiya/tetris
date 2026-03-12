@@ -65,8 +65,8 @@
             function mkStar() {
                 const tier = Math.random();
                 return {
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
                     // Tier 0: distant pin-points, tier 1: mid, tier 2: close twinklers
                     r: tier < 0.7 ? 0.4 + Math.random() * 0.6
                      : tier < 0.93 ? 0.8 + Math.random() * 1.0
@@ -84,8 +84,8 @@
                 const angle = (-15 + Math.random() * -20) * Math.PI / 180; // downward-right streak
                 const speed = 6 + Math.random() * 10;
                 return {
-                    x:  Math.random() * bgCanvas.width * 0.8,
-                    y:  Math.random() * bgCanvas.height * 0.4,
+                    x:  Math.random() * window.innerWidth * 0.8,
+                    y:  Math.random() * window.innerHeight * 0.4,
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed * -1 + Math.random() * 2,
                     len: 60 + Math.random() * 120,
@@ -101,7 +101,7 @@
                 return {
                     shape: BG_SHAPES[shapeIdx],
                     rotation: Math.floor(Math.random() * 4),
-                    x: Math.random() * (bgCanvas.width + cfg.blockSize * 4) - cfg.blockSize * 2,
+                    x: Math.random() * (window.innerWidth + cfg.blockSize * 4) - cfg.blockSize * 2,
                     y: -(cfg.blockSize * 4 + Math.random() * 60),
                     speed: cfg.speedMin + Math.random() * (cfg.speedMax - cfg.speedMin),
                     col,
@@ -116,8 +116,8 @@
             function mkNebula() {
                 const col = NEON_PALETTE[Math.floor(Math.random() * NEON_PALETTE.length)];
                 return {
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
                     r: 180 + Math.random() * 280,
                     col,
                     alpha: 0.025 + Math.random() * 0.045,
@@ -130,13 +130,17 @@
 
             // ── Resize / init ─────────────────────────────────────────
             function resize() {
-                bgCanvas.width  = window.innerWidth;
-                bgCanvas.height = window.innerHeight;
+                const dpr = window.devicePixelRatio || 1;
+                bgCanvas.width  = window.innerWidth * dpr;
+                bgCanvas.height = window.innerHeight * dpr;
+                bgCanvas.style.width = window.innerWidth + 'px';
+                bgCanvas.style.height = window.innerHeight + 'px';
+                bgCtx.scale(dpr, dpr);
                 init();
             }
 
             function init() {
-                const W = bgCanvas.width, H = bgCanvas.height;
+                const W = window.innerWidth, H = window.innerHeight;
                 // Stars
                 stars = [];
                 const starCount = Math.min(280, Math.round(W * H / 5000));
@@ -189,7 +193,7 @@
             }
 
             function drawFallerLayer(layerFallers, layerIdx) {
-                const H = bgCanvas.height;
+                const H = window.innerHeight;
                 const cfg = LAYER_CONFIG[layerIdx];
 
                 layerFallers.forEach((f, idx) => {
@@ -218,7 +222,7 @@
 
             // ── Main loop ─────────────────────────────────────────────
             function bgLoop(timestamp) {
-                const W = bgCanvas.width, H = bgCanvas.height;
+                const W = window.innerWidth, H = window.innerHeight;
                 const bgDeltaTime = Math.min(timestamp - bgLastTimestamp, 100);
                 bgLastTimestamp = timestamp;
                 time += bgDeltaTime * 0.06;  // normalize: ~1 unit per frame at 60fps
@@ -402,7 +406,7 @@
                     ss.x += ss.vx;
                     ss.y += ss.vy;
                     ss.life -= 0.018;
-                    if (ss.life <= 0 || ss.x > bgCanvas.width + 50 || ss.y > bgCanvas.height + 50) {
+                    if (ss.life <= 0 || ss.x > window.innerWidth + 50 || ss.y > window.innerHeight + 50) {
                         shootingStars.splice(i, 1);
                         continue;
                     }
@@ -458,10 +462,24 @@
         })();
 
         // ============================================================
+        //  HiDPI / Retina Canvas Scaling Utility
+        // ============================================================
+        function setupHiDPICanvas(canvas, cssWidth, cssHeight) {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = cssWidth * dpr;
+            canvas.height = cssHeight * dpr;
+            canvas.style.width = cssWidth + 'px';
+            canvas.style.height = cssHeight + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            return ctx;
+        }
+
+        // ============================================================
         //  GAME CANVAS BACKGROUND (grid lines on board)
         // ============================================================
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = setupHiDPICanvas(canvas, 300, 600);
         const BLOCK_SIZE = 30;
         const BOARD_WIDTH = 10;
         const BOARD_HEIGHT = 20;
@@ -545,8 +563,38 @@
 
         // Next piece preview canvas
         const nextCanvas = document.getElementById('nextPieceCanvas');
+        setupHiDPICanvas(nextCanvas, 120, 120);
         const nextCtx = nextCanvas.getContext('2d');
         const NEXT_BLOCK_SIZE = 24;
+
+        // ── DPR change listener (e.g. dragging between displays) ──
+        (function initDPRListener() {
+            function getGameCanvasSize() {
+                // Mobile media query: .game-board is 250×500 below 768px
+                if (window.matchMedia('(max-width: 768px)').matches) {
+                    return { w: 250, h: 500 };
+                }
+                return { w: 300, h: 600 };
+            }
+
+            function onDPRChange() {
+                const size = getGameCanvasSize();
+                setupHiDPICanvas(canvas, size.w, size.h);
+                setupHiDPICanvas(nextCanvas, 120, 120);
+                // bgCanvas resize handler already handles DPR via window resize event
+                // but we trigger it explicitly for DPR-only changes
+                window.dispatchEvent(new Event('resize'));
+                listenForDPRChange(); // re-listen since matchMedia fires once
+            }
+
+            function listenForDPRChange() {
+                const dpr = window.devicePixelRatio || 1;
+                const mql = matchMedia('(resolution: ' + dpr + 'dppx)');
+                mql.addEventListener('change', onDPRChange, { once: true });
+            }
+
+            listenForDPRChange();
+        })();
 
         // Piece index tracker for glow
         let pieceColorIndex = 0;
