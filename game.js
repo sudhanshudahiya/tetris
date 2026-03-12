@@ -65,8 +65,8 @@
             function mkStar() {
                 const tier = Math.random();
                 return {
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
+                    x: Math.random() * bgLogicalW,
+                    y: Math.random() * bgLogicalH,
                     // Tier 0: distant pin-points, tier 1: mid, tier 2: close twinklers
                     r: tier < 0.7 ? 0.4 + Math.random() * 0.6
                      : tier < 0.93 ? 0.8 + Math.random() * 1.0
@@ -84,8 +84,8 @@
                 const angle = (-15 + Math.random() * -20) * Math.PI / 180; // downward-right streak
                 const speed = 6 + Math.random() * 10;
                 return {
-                    x:  Math.random() * bgCanvas.width * 0.8,
-                    y:  Math.random() * bgCanvas.height * 0.4,
+                    x:  Math.random() * bgLogicalW * 0.8,
+                    y:  Math.random() * bgLogicalH * 0.4,
                     vx: Math.cos(angle) * speed,
                     vy: Math.sin(angle) * speed * -1 + Math.random() * 2,
                     len: 60 + Math.random() * 120,
@@ -101,7 +101,7 @@
                 return {
                     shape: BG_SHAPES[shapeIdx],
                     rotation: Math.floor(Math.random() * 4),
-                    x: Math.random() * (bgCanvas.width + cfg.blockSize * 4) - cfg.blockSize * 2,
+                    x: Math.random() * (bgLogicalW + cfg.blockSize * 4) - cfg.blockSize * 2,
                     y: -(cfg.blockSize * 4 + Math.random() * 60),
                     speed: cfg.speedMin + Math.random() * (cfg.speedMax - cfg.speedMin),
                     col,
@@ -116,8 +116,8 @@
             function mkNebula() {
                 const col = NEON_PALETTE[Math.floor(Math.random() * NEON_PALETTE.length)];
                 return {
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
+                    x: Math.random() * bgLogicalW,
+                    y: Math.random() * bgLogicalH,
                     r: 180 + Math.random() * 280,
                     col,
                     alpha: 0.025 + Math.random() * 0.045,
@@ -129,14 +129,23 @@
             }
 
             // ── Resize / init ─────────────────────────────────────────
+            let bgLogicalW = window.innerWidth;
+            let bgLogicalH = window.innerHeight;
+
             function resize() {
-                bgCanvas.width  = window.innerWidth;
-                bgCanvas.height = window.innerHeight;
+                const dpr = window.devicePixelRatio || 1;
+                bgLogicalW = window.innerWidth;
+                bgLogicalH = window.innerHeight;
+                bgCanvas.width  = bgLogicalW * dpr;
+                bgCanvas.height = bgLogicalH * dpr;
+                bgCanvas.style.width  = bgLogicalW + 'px';
+                bgCanvas.style.height = bgLogicalH + 'px';
+                bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 init();
             }
 
             function init() {
-                const W = bgCanvas.width, H = bgCanvas.height;
+                const W = bgLogicalW, H = bgLogicalH;
                 // Stars
                 stars = [];
                 const starCount = Math.min(280, Math.round(W * H / 5000));
@@ -189,7 +198,7 @@
             }
 
             function drawFallerLayer(layerFallers, layerIdx) {
-                const H = bgCanvas.height;
+                const H = bgLogicalH;
                 const cfg = LAYER_CONFIG[layerIdx];
 
                 layerFallers.forEach((f, idx) => {
@@ -218,7 +227,7 @@
 
             // ── Main loop ─────────────────────────────────────────────
             function bgLoop(timestamp) {
-                const W = bgCanvas.width, H = bgCanvas.height;
+                const W = bgLogicalW, H = bgLogicalH;
                 const bgDeltaTime = Math.min(timestamp - bgLastTimestamp, 100);
                 bgLastTimestamp = timestamp;
                 time += bgDeltaTime * 0.06;  // normalize: ~1 unit per frame at 60fps
@@ -402,7 +411,7 @@
                     ss.x += ss.vx;
                     ss.y += ss.vy;
                     ss.life -= 0.018;
-                    if (ss.life <= 0 || ss.x > bgCanvas.width + 50 || ss.y > bgCanvas.height + 50) {
+                    if (ss.life <= 0 || ss.x > bgLogicalW + 50 || ss.y > bgLogicalH + 50) {
                         shootingStars.splice(i, 1);
                         continue;
                     }
@@ -465,6 +474,17 @@
         const BLOCK_SIZE = 30;
         const BOARD_WIDTH = 10;
         const BOARD_HEIGHT = 20;
+
+        // HiDPI / Retina display support
+        function scaleCanvasForHiDPI(cvs, context, logicalWidth, logicalHeight) {
+            const dpr = window.devicePixelRatio || 1;
+            cvs.width = logicalWidth * dpr;
+            cvs.height = logicalHeight * dpr;
+            cvs.style.width = logicalWidth + 'px';
+            cvs.style.height = logicalHeight + 'px';
+            context.scale(dpr, dpr);
+        }
+        scaleCanvasForHiDPI(canvas, ctx, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
 
         let board = [];
         let currentPiece = null;
@@ -547,6 +567,8 @@
         const nextCanvas = document.getElementById('nextPieceCanvas');
         const nextCtx = nextCanvas.getContext('2d');
         const NEXT_BLOCK_SIZE = 24;
+        const NEXT_CANVAS_SIZE = 120;
+        scaleCanvasForHiDPI(nextCanvas, nextCtx, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
 
         // Piece index tracker for glow
         let pieceColorIndex = 0;
@@ -663,7 +685,7 @@
         // Draw the next piece preview
         function drawNextPiece() {
             nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
-            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            nextCtx.fillRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
 
             if (!nextPiece) return;
 
@@ -686,8 +708,8 @@
 
             const pieceW = (maxC - minC + 1) * NEXT_BLOCK_SIZE;
             const pieceH = (maxR - minR + 1) * NEXT_BLOCK_SIZE;
-            const offsetX = (nextCanvas.width - pieceW) / 2;
-            const offsetY = (nextCanvas.height - pieceH) / 2;
+            const offsetX = (NEXT_CANVAS_SIZE - pieceW) / 2;
+            const offsetY = (NEXT_CANVAS_SIZE - pieceH) / 2;
 
             for (let r = 0; r < shape.length; r++) {
                 for (let c = 0; c < shape[r].length; c++) {
@@ -911,13 +933,13 @@
             for (let c = 0; c <= BOARD_WIDTH; c++) {
                 ctx.beginPath();
                 ctx.moveTo(c * BLOCK_SIZE, 0);
-                ctx.lineTo(c * BLOCK_SIZE, canvas.height);
+                ctx.lineTo(c * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
                 ctx.stroke();
             }
             for (let r = 0; r <= BOARD_HEIGHT; r++) {
                 ctx.beginPath();
                 ctx.moveTo(0, r * BLOCK_SIZE);
-                ctx.lineTo(canvas.width, r * BLOCK_SIZE);
+                ctx.lineTo(BOARD_WIDTH * BLOCK_SIZE, r * BLOCK_SIZE);
                 ctx.stroke();
             }
         }
@@ -984,7 +1006,7 @@
         function drawBoard() {
             // Clear canvas with dark semi-transparent background
             ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
 
             // Draw subtle grid
             drawBoardGrid();
@@ -1548,12 +1570,12 @@
 
             // Clear the board
             ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
             drawBoardGrid();
 
             // Clear the next piece preview
             nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
-            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            nextCtx.fillRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
         }
 
         function gameOver() {
@@ -1597,10 +1619,10 @@
         updateDisplay();
         // Draw initial board grid
         ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
         drawBoardGrid();
         // Clear next piece preview
         nextCtx.fillStyle = 'rgba(0, 0, 8, 0.95)';
-        nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+        nextCtx.fillRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
         // Initialize leaderboard display
         renderLeaderboard();
