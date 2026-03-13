@@ -1432,6 +1432,20 @@
         const LEADERBOARD_KEY = 'tetris_leaderboard';
         const MAX_LEADERBOARD_ENTRIES = 10;
 
+        function escapeHtml(str) {
+            const s = String(str);
+            return s
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function sanitizeInitials(raw) {
+            return String(raw).replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase();
+        }
+
         function getLeaderboard() {
             try {
                 const data = localStorage.getItem(LEADERBOARD_KEY);
@@ -1444,7 +1458,7 @@
         function saveScore(initials, scoreVal, linesVal) {
             const leaderboard = getLeaderboard();
             leaderboard.push({
-                initials: initials.toUpperCase().substring(0, 3),
+                initials: sanitizeInitials(initials),
                 score: scoreVal,
                 lines: linesVal,
                 date: Date.now()
@@ -1481,7 +1495,7 @@
             }
             leaderboard.forEach((entry, i) => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${i + 1}</td><td>${entry.initials}</td><td>${entry.score}</td><td>${entry.lines}</td>`;
+                tr.innerHTML = `<td>${i + 1}</td><td>${escapeHtml(entry.initials)}</td><td>${escapeHtml(entry.score)}</td><td>${escapeHtml(entry.lines)}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -1489,7 +1503,7 @@
         function submitScore() {
             const input = document.getElementById('initialsInput');
             if (!input) return;
-            const initials = input.value.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase();
+            const initials = sanitizeInitials(input.value);
             if (initials.length === 0) return;
             saveScore(initials, score, lines);
             renderLeaderboard();
@@ -1512,6 +1526,8 @@
             renderLeaderboard,
             submitScore,
             clearLeaderboard,
+            escapeHtml,
+            sanitizeInitials,
             LEADERBOARD_KEY,
             MAX_LEADERBOARD_ENTRIES
         };
