@@ -6,14 +6,18 @@
   "scripts": {
     "lint": "eslint index.html game.js test_tetris.js",
     "prepare": "sh scripts/install-hooks.sh",
-    "test": "node test_tetris.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^10.0.3",
-"globals": "^17.4.0"
+    "globals": "^17.4.0",
+    "vitest": "^4.1.0"
   }
 }
