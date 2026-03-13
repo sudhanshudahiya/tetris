@@ -1,8 +1,69 @@
         // ESLint verified
         // ============================================================
+        //  LEADERBOARD DATA LAYER — Node.js compatible for testing
+        // ============================================================
+        var LEADERBOARD_KEY = 'tetris_leaderboard';
+        var MAX_LEADERBOARD_ENTRIES = 10;
+
+        function getLeaderboard() {
+            try {
+                var data = localStorage.getItem(LEADERBOARD_KEY);
+                if (!data) return [];
+                var parsed = JSON.parse(data);
+                if (!Array.isArray(parsed)) return [];
+                return parsed;
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveScore(name, scoreVal, linesVal, levelVal) {
+            var leaderboard = getLeaderboard();
+            leaderboard.push({
+                name: name,
+                score: scoreVal,
+                lines: linesVal,
+                level: levelVal,
+                date: new Date().toISOString()
+            });
+            leaderboard.sort(function (a, b) { return b.score - a.score; });
+            if (leaderboard.length > MAX_LEADERBOARD_ENTRIES) {
+                leaderboard.length = MAX_LEADERBOARD_ENTRIES;
+            }
+            try {
+                localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function isHighScore(scoreVal) {
+            if (scoreVal <= 0) return false;
+            var leaderboard = getLeaderboard();
+            if (leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
+            return scoreVal > leaderboard[leaderboard.length - 1].score;
+        }
+
+        function clearLeaderboard() {
+            try {
+                localStorage.removeItem(LEADERBOARD_KEY);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Node.js module exports for testing
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = { getLeaderboard, saveScore, isHighScore, clearLeaderboard, LEADERBOARD_KEY, MAX_LEADERBOARD_ENTRIES };
+        }
+
+        // ============================================================
         //  BACKGROUND ANIMATION — Enhanced Multi-Layer System
         // ============================================================
         (function () {
+            if (typeof document === 'undefined') return; // Node.js guard
             const bgCanvas = document.getElementById('bgCanvas');
             const bgCtx = bgCanvas.getContext('2d');
 
@@ -465,6 +526,11 @@
             resize();
             bgLoop();
         })();
+
+        // ============================================================
+        //  BROWSER-ONLY GAME CODE
+        // ============================================================
+        if (typeof document !== 'undefined') {
 
         // ============================================================
         //  GAME CANVAS BACKGROUND (grid lines on board)
@@ -1427,46 +1493,8 @@
         })();
 
         // ============================================================
-        //  LEADERBOARD — localStorage High Score Persistence
+        //  LEADERBOARD UI — DOM rendering (uses data layer above)
         // ============================================================
-        const LEADERBOARD_KEY = 'tetris_leaderboard';
-        const MAX_LEADERBOARD_ENTRIES = 10;
-
-        function getLeaderboard() {
-            try {
-                const data = localStorage.getItem(LEADERBOARD_KEY);
-                return data ? JSON.parse(data) : [];
-            } catch (e) {
-                return [];
-            }
-        }
-
-        function saveScore(initials, scoreVal, linesVal) {
-            const leaderboard = getLeaderboard();
-            leaderboard.push({
-                initials: initials.toUpperCase().substring(0, 3),
-                score: scoreVal,
-                lines: linesVal,
-                date: Date.now()
-            });
-            leaderboard.sort((a, b) => b.score - a.score);
-            if (leaderboard.length > MAX_LEADERBOARD_ENTRIES) {
-                leaderboard.length = MAX_LEADERBOARD_ENTRIES;
-            }
-            try {
-                localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
-            } catch (e) {
-                // Storage full or unavailable
-            }
-            return leaderboard;
-        }
-
-        function isHighScore(scoreVal) {
-            if (scoreVal <= 0) return false;
-            const leaderboard = getLeaderboard();
-            if (leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
-            return scoreVal > leaderboard[leaderboard.length - 1].score;
-        }
 
         function renderLeaderboard() {
             const tbody = document.getElementById('leaderboardBody');
@@ -1481,7 +1509,7 @@
             }
             leaderboard.forEach((entry, i) => {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${i + 1}</td><td>${entry.initials}</td><td>${entry.score}</td><td>${entry.lines}</td>`;
+                tr.innerHTML = `<td>${i + 1}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.lines}</td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -1491,17 +1519,32 @@
             if (!input) return;
             const initials = input.value.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase();
             if (initials.length === 0) return;
-            saveScore(initials, score, lines);
+            saveScore(initials, score, lines, level);
             renderLeaderboard();
+            // Also update sidebar leaderboard if present
+            renderSidebarLeaderboard();
             // Hide the initials input section
             const section = document.getElementById('highScoreSection');
             if (section) section.style.display = 'none';
             input.value = '';
         }
 
-        function clearLeaderboard() {
-            localStorage.removeItem(LEADERBOARD_KEY);
-            renderLeaderboard();
+        function renderSidebarLeaderboard() {
+            const tbody = document.getElementById('sidebarLeaderboardBody');
+            if (!tbody) return;
+            const leaderboard = getLeaderboard();
+            tbody.innerHTML = '';
+            if (leaderboard.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="3" style="text-align:center;color:rgba(255,255,255,0.5);padding:8px;">No scores yet</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+            leaderboard.forEach((entry, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${i + 1}</td><td>${entry.name}</td><td>${entry.score}</td>`;
+                tbody.appendChild(tr);
+            });
         }
 
         // Expose leaderboard functions for testing
@@ -1626,3 +1669,6 @@
         nextCtx.fillRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
         // Initialize leaderboard display
         renderLeaderboard();
+        renderSidebarLeaderboard();
+
+        } // end browser-only guard
