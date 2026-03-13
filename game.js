@@ -471,12 +471,12 @@
         // ============================================================
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const BLOCK_SIZE = 30;
-        const BOARD_WIDTH = 10;
-        const BOARD_HEIGHT = 20;
+        export const BLOCK_SIZE = 30;
+        export const BOARD_WIDTH = 10;
+        export const BOARD_HEIGHT = 20;
 
         // HiDPI / Retina display support
-        function scaleCanvasForHiDPI(cvs, context, logicalWidth, logicalHeight) {
+        export function scaleCanvasForHiDPI(cvs, context, logicalWidth, logicalHeight) {
             const dpr = window.devicePixelRatio || 1;
             cvs.width = logicalWidth * dpr;
             cvs.height = logicalHeight * dpr;
@@ -506,7 +506,7 @@
         const FLASH_DURATION = 400; // ms for flash effect
 
         // Tetris piece shapes
-        const PIECES = [
+        export const PIECES = [
             // I-piece
             [
                 [0, 0, 0, 0],
@@ -559,7 +559,7 @@
         ];
 
         // Colors for each piece type - neon palette
-        const COLORS = ['#00ffff', '#ff00aa', '#ffff00', '#00ff88', '#ff4444', '#4488ff', '#cc44ff'];
+        export const COLORS = ['#00ffff', '#ff00aa', '#ffff00', '#00ff88', '#ff4444', '#4488ff', '#cc44ff'];
         // Glow colors matching each piece
         const GLOW_COLORS = ['rgba(0,255,255,', 'rgba(255,0,170,', 'rgba(255,255,0,', 'rgba(0,255,136,', 'rgba(255,68,68,', 'rgba(68,136,255,', 'rgba(204,68,255,'];
 
@@ -945,7 +945,7 @@
         }
 
         // Calculate ghost piece Y position (pure function, testable)
-        function getGhostY(piece, boardState) {
+        export function getGhostY(piece, boardState) {
             let ghostY = piece.y;
             // Simulate isValidMove inline using boardState
             const canMove = (dy) => {
@@ -1003,7 +1003,7 @@
         }
 
         // Draw the game board
-        function drawBoard() {
+        export function drawBoard() {
             // Clear canvas with dark semi-transparent background
             ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
             ctx.fillRect(0, 0, BOARD_WIDTH * BLOCK_SIZE, BOARD_HEIGHT * BLOCK_SIZE);
@@ -1429,25 +1429,29 @@
         // ============================================================
         //  LEADERBOARD — localStorage High Score Persistence
         // ============================================================
-        const LEADERBOARD_KEY = 'tetris_leaderboard';
-        const MAX_LEADERBOARD_ENTRIES = 10;
+        export const LEADERBOARD_KEY = 'tetris_leaderboard';
+        export const MAX_LEADERBOARD_ENTRIES = 10;
 
-        function getLeaderboard() {
+        export function getLeaderboard() {
             try {
                 const data = localStorage.getItem(LEADERBOARD_KEY);
-                return data ? JSON.parse(data) : [];
+                if (!data) return [];
+                const parsed = JSON.parse(data);
+                return Array.isArray(parsed) ? parsed : [];
             } catch (e) {
                 return [];
             }
         }
 
-        function saveScore(initials, scoreVal, linesVal) {
+        export function saveScore(initials, scoreVal, linesVal, levelVal) {
             const leaderboard = getLeaderboard();
             leaderboard.push({
+                name: initials,
                 initials: initials.toUpperCase().substring(0, 3),
                 score: scoreVal,
                 lines: linesVal,
-                date: Date.now()
+                level: levelVal,
+                date: new Date().toISOString()
             });
             leaderboard.sort((a, b) => b.score - a.score);
             if (leaderboard.length > MAX_LEADERBOARD_ENTRIES) {
@@ -1456,19 +1460,19 @@
             try {
                 localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
             } catch (e) {
-                // Storage full or unavailable
+                return false;
             }
             return leaderboard;
         }
 
-        function isHighScore(scoreVal) {
+        export function isHighScore(scoreVal) {
             if (scoreVal <= 0) return false;
             const leaderboard = getLeaderboard();
             if (leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
             return scoreVal > leaderboard[leaderboard.length - 1].score;
         }
 
-        function renderLeaderboard() {
+        export function renderLeaderboard() {
             const tbody = document.getElementById('leaderboardBody');
             if (!tbody) return;
             const leaderboard = getLeaderboard();
@@ -1486,12 +1490,12 @@
             });
         }
 
-        function submitScore() {
+        export function submitScore() {
             const input = document.getElementById('initialsInput');
             if (!input) return;
             const initials = input.value.replace(/[^A-Za-z0-9]/g, '').substring(0, 3).toUpperCase();
             if (initials.length === 0) return;
-            saveScore(initials, score, lines);
+            saveScore(initials, score, lines, level);
             renderLeaderboard();
             // Hide the initials input section
             const section = document.getElementById('highScoreSection');
@@ -1499,9 +1503,14 @@
             input.value = '';
         }
 
-        function clearLeaderboard() {
-            localStorage.removeItem(LEADERBOARD_KEY);
-            renderLeaderboard();
+        export function clearLeaderboard() {
+            try {
+                localStorage.removeItem(LEADERBOARD_KEY);
+            } catch (e) {
+                return false;
+            }
+            if (typeof document !== 'undefined') renderLeaderboard();
+            return true;
         }
 
         // Expose leaderboard functions for testing
@@ -1516,8 +1525,15 @@
             MAX_LEADERBOARD_ENTRIES
         };
 
+        // Expose game control functions to global scope for onclick handlers
+        window.startGame = startGame;
+        window.pauseGame = pauseGame;
+        window.restartGame = restartGame;
+        window.submitScore = submitScore;
+        window.startNewGame = startNewGame;
+
         // Game control functions
-        function startGame() {
+        export function startGame() {
             if (gameRunning) return;
 
             initBoard();
@@ -1541,7 +1557,7 @@
             gameLoop = requestAnimationFrame(gameStep);
         }
 
-        function pauseGame() {
+        export function pauseGame() {
             if (!gameRunning) return;
 
             gamePaused = !gamePaused;
@@ -1553,7 +1569,7 @@
             }
         }
 
-        function restartGame() {
+        export function restartGame() {
             gameRunning = false;
             gamePaused = false;
             clearingRows = [];
@@ -1578,7 +1594,7 @@
             nextCtx.fillRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
         }
 
-        function gameOver() {
+        export function gameOver() {
             gameRunning = false;
             gamePaused = false;
 
@@ -1610,7 +1626,7 @@
             }
         }
 
-        function startNewGame() {
+        export function startNewGame() {
             document.getElementById('gameOverModal').style.display = 'none';
             startGame();
         }
