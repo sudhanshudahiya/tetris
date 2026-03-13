@@ -1,6 +1,6 @@
 # Tetris
 
-A browser-based Tetris game with neon/CRT aesthetics, ghost piece preview, touch controls, and a local leaderboard.
+A browser-based Tetris game with neon/CRT aesthetics, ghost piece preview, touch controls, and a local leaderboard. Built with vanilla JavaScript.
 
 ## Run the Game
 
