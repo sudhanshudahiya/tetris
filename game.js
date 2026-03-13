@@ -1553,6 +1553,14 @@
             }
         }
 
+        // Pause automatically when the browser tab becomes hidden to prevent
+        // pieces from falling and locking without player input (Page Visibility API)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && gameRunning && !gamePaused) {
+                pauseGame();
+            }
+        });
+
         function restartGame() {
             gameRunning = false;
             gamePaused = false;
