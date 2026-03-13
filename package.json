@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "eslint index.html game.js test_tetris.js",
     "prepare": "sh scripts/install-hooks.sh",
-    "test": "node test_tetris.js"
+    "test": "node test_tetris.js && node test_leaderboard.js"
   },
   "keywords": [],
   "author": "",
