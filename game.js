@@ -505,6 +505,14 @@
         const CLEAR_ANIMATION_DURATION = 400; // ms for the flash effect
         const FLASH_DURATION = 400; // ms for flash effect
 
+        // ── DAS / ARR constants (Delayed Auto Shift) ─────────────────
+        const DAS_DELAY = 167;    // ms before auto-repeat begins
+        const ARR_INTERVAL = 33;  // ms between auto-repeat moves
+
+        // Key state tracking for DAS/ARR
+        const keysDown = {};      // map of key → true when held
+        const keyTimers = {};     // map of key → { pressed, dasElapsed, arrElapsed }
+
         // Tetris piece shapes
         const PIECES = [
             // I-piece
@@ -1085,6 +1093,49 @@
             document.getElementById('level').textContent = level;
         }
 
+        // ── DAS/ARR: execute a single movement action for a held key ──
+        function executeMovementKey(key) {
+            if (!currentPiece) return;
+            switch (key) {
+            case 'ArrowLeft':
+                if (isValidMove(currentPiece, -1, 0)) {
+                    currentPiece.x--;
+                }
+                break;
+            case 'ArrowRight':
+                if (isValidMove(currentPiece, 1, 0)) {
+                    currentPiece.x++;
+                }
+                break;
+            case 'ArrowDown':
+                if (isValidMove(currentPiece, 0, 1)) {
+                    currentPiece.y++;
+                    score++;
+                    updateDisplay();
+                }
+                break;
+            }
+        }
+
+        // ── DAS/ARR: process held movement keys each frame ──────────
+        function processInput(deltaTime) {
+            const movementKeys = ['ArrowLeft', 'ArrowRight', 'ArrowDown'];
+            for (const key of movementKeys) {
+                if (!keysDown[key] || !keyTimers[key]) continue;
+                const timer = keyTimers[key];
+
+                if (timer.dasElapsed < DAS_DELAY) {
+                    timer.dasElapsed += deltaTime;
+                } else {
+                    timer.arrElapsed += deltaTime;
+                    while (timer.arrElapsed >= ARR_INTERVAL) {
+                        executeMovementKey(key);
+                        timer.arrElapsed -= ARR_INTERVAL;
+                    }
+                }
+            }
+        }
+
         // Game loop
         function gameStep(time) {
             if (!gameRunning || gamePaused) return;
@@ -1126,6 +1177,9 @@
                 return;
             }
 
+            // Process held-key DAS/ARR input before drop logic
+            processInput(deltaTime);
+
             dropTime += deltaTime;
 
             // Drop piece based on level (faster as level increases)
@@ -1144,51 +1198,56 @@
             gameLoop = requestAnimationFrame(gameStep);
         }
 
-        // Handle keyboard input
+        // ── Keyboard input with DAS/ARR ────────────────────────────
         document.addEventListener('keydown', (e) => {
+            // Pause fires once per press regardless of game state
             if (e.key === 'p' || e.key === 'P') {
-                pauseGame();
+                if (!keysDown[e.key]) {
+                    keysDown[e.key] = true;
+                    pauseGame();
+                }
                 return;
             }
 
             if (!gameRunning || gamePaused || clearingRows.length > 0 || isClearing) return;
 
+            // Ignore native repeat — DAS/ARR handles repetition
+            if (keysDown[e.key]) return;
+            keysDown[e.key] = true;
+
             switch (e.key) {
-                case 'ArrowLeft':
-                    if (isValidMove(currentPiece, -1, 0)) {
-                        currentPiece.x--;
-                    }
-                    break;
-                case 'ArrowRight':
-                    if (isValidMove(currentPiece, 1, 0)) {
-                        currentPiece.x++;
-                    }
-                    break;
-                case 'ArrowDown':
-                    if (isValidMove(currentPiece, 0, 1)) {
-                        currentPiece.y++;
-                        score++;
-                        updateDisplay();
-                    }
-                    break;
-                case 'ArrowUp':
-                    const rotatedShape = rotatePiece(currentPiece.shape);
-                    if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
-                        currentPiece.shape = rotatedShape;
-                    }
-                    break;
-                case ' ':
-                    // Hard drop
-                    while (isValidMove(currentPiece, 0, 1)) {
-                        currentPiece.y++;
-                        score += 2;
-                    }
-                    updateDisplay();
-                    placePiece();
-                    break;
+            case 'ArrowLeft':
+            case 'ArrowRight':
+            case 'ArrowDown':
+                // Execute once immediately, then let processInput handle DAS/ARR
+                executeMovementKey(e.key);
+                keyTimers[e.key] = { pressed: true, dasElapsed: 0, arrElapsed: 0 };
+                break;
+            case 'ArrowUp': {
+                // Rotate — fire once, no repeat
+                const rotatedShape = rotatePiece(currentPiece.shape);
+                if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
+                    currentPiece.shape = rotatedShape;
+                }
+                break;
+            }
+            case ' ':
+                // Hard drop — fire once, no repeat
+                while (isValidMove(currentPiece, 0, 1)) {
+                    currentPiece.y++;
+                    score += 2;
+                }
+                updateDisplay();
+                placePiece();
+                break;
             }
 
             drawBoard();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            delete keysDown[e.key];
+            delete keyTimers[e.key];
         });
 
         // ============================================================
