@@ -1,5 +1,306 @@
         // ESLint verified
         // ============================================================
+        //  SOUND MANAGER — Chiptune SFX & Background Music via Web Audio API
+        // ============================================================
+        const SoundManager = (function () {
+            let audioCtx = null;
+            let masterGain = null;
+            let musicGain = null;
+            let sfxGain = null;
+            let muted = false;
+            let musicPlaying = false;
+            let musicNodes = [];       // active music oscillators/gains for cleanup
+            let musicTimer = null;     // scheduling timer for music loop
+
+            // Persist mute state
+            const MUTE_KEY = 'tetris_muted';
+
+            function ensureContext() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    masterGain = audioCtx.createGain();
+                    masterGain.connect(audioCtx.destination);
+                    musicGain = audioCtx.createGain();
+                    musicGain.gain.value = 0.25;
+                    musicGain.connect(masterGain);
+                    sfxGain = audioCtx.createGain();
+                    sfxGain.gain.value = 0.4;
+                    sfxGain.connect(masterGain);
+
+                    // Restore mute state from localStorage
+                    try {
+                        muted = localStorage.getItem(MUTE_KEY) === 'true';
+                    } catch (_e) { /* localStorage unavailable */ }
+                    masterGain.gain.value = muted ? 0 : 1;
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                return audioCtx;
+            }
+
+            // Play a single tone (square wave for chiptune feel)
+            function playTone(freq, duration, startOffset, gainNode, type) {
+                const ctx = ensureContext();
+                const osc = ctx.createOscillator();
+                const env = ctx.createGain();
+                osc.type = type || 'square';
+                osc.frequency.value = freq;
+                env.gain.setValueAtTime(0.5, ctx.currentTime + startOffset);
+                env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+                osc.connect(env);
+                env.connect(gainNode || sfxGain);
+                osc.start(ctx.currentTime + startOffset);
+                osc.stop(ctx.currentTime + startOffset + duration + 0.05);
+                return osc;
+            }
+
+            // ── SFX definitions ──────────────────────────────────────
+
+            function playMoveSfx() {
+                ensureContext();
+                playTone(200, 0.05, 0, sfxGain, 'square');
+            }
+
+            function playRotateSfx() {
+                ensureContext();
+                playTone(400, 0.06, 0, sfxGain, 'square');
+                playTone(500, 0.06, 0.03, sfxGain, 'square');
+            }
+
+            function playLockSfx() {
+                ensureContext();
+                playTone(150, 0.12, 0, sfxGain, 'triangle');
+                playTone(100, 0.1, 0.06, sfxGain, 'triangle');
+            }
+
+            function playLineClearSfx(lineCount) {
+                ensureContext();
+                if (lineCount === 4) {
+                    // Tetris! — triumphant ascending arpeggio
+                    playTone(523, 0.1, 0, sfxGain, 'square');
+                    playTone(659, 0.1, 0.08, sfxGain, 'square');
+                    playTone(784, 0.1, 0.16, sfxGain, 'square');
+                    playTone(1047, 0.2, 0.24, sfxGain, 'square');
+                    playTone(784, 0.15, 0.4, sfxGain, 'sawtooth');
+                    playTone(1047, 0.3, 0.5, sfxGain, 'sawtooth');
+                } else {
+                    // Standard line clear — short ascending sweep
+                    playTone(330, 0.08, 0, sfxGain, 'square');
+                    playTone(440, 0.08, 0.06, sfxGain, 'square');
+                    playTone(550, 0.12, 0.12, sfxGain, 'square');
+                }
+            }
+
+            function playLevelUpSfx() {
+                ensureContext();
+                playTone(440, 0.1, 0, sfxGain, 'square');
+                playTone(554, 0.1, 0.1, sfxGain, 'square');
+                playTone(659, 0.1, 0.2, sfxGain, 'square');
+                playTone(880, 0.25, 0.3, sfxGain, 'sawtooth');
+            }
+
+            function playHardDropSfx() {
+                ensureContext();
+                playTone(80, 0.15, 0, sfxGain, 'sawtooth');
+                playTone(60, 0.12, 0.05, sfxGain, 'triangle');
+            }
+
+            function playGameOverSfx() {
+                ensureContext();
+                playTone(440, 0.2, 0, sfxGain, 'square');
+                playTone(370, 0.2, 0.2, sfxGain, 'square');
+                playTone(311, 0.2, 0.4, sfxGain, 'square');
+                playTone(262, 0.4, 0.6, sfxGain, 'sawtooth');
+                playTone(196, 0.5, 0.9, sfxGain, 'triangle');
+            }
+
+            // ── Background Music — simple chiptune loop ─────────────
+
+            // Korobeiniki-inspired melody (simplified, note frequencies)
+            const MELODY = [
+                // bar 1
+                { f: 659, d: 0.2 }, { f: 494, d: 0.1 }, { f: 523, d: 0.1 }, { f: 587, d: 0.2 },
+                { f: 523, d: 0.1 }, { f: 494, d: 0.1 },
+                // bar 2
+                { f: 440, d: 0.2 }, { f: 440, d: 0.1 }, { f: 523, d: 0.1 }, { f: 659, d: 0.2 },
+                { f: 587, d: 0.1 }, { f: 523, d: 0.1 },
+                // bar 3
+                { f: 494, d: 0.3 }, { f: 523, d: 0.1 }, { f: 587, d: 0.2 },
+                { f: 659, d: 0.2 },
+                // bar 4
+                { f: 523, d: 0.2 }, { f: 440, d: 0.2 }, { f: 440, d: 0.3 },
+                { f: 0, d: 0.1 },  // rest
+                // bar 5
+                { f: 587, d: 0.3 }, { f: 698, d: 0.1 }, { f: 880, d: 0.2 },
+                { f: 784, d: 0.1 }, { f: 698, d: 0.1 },
+                // bar 6
+                { f: 659, d: 0.3 }, { f: 523, d: 0.1 }, { f: 659, d: 0.2 },
+                { f: 587, d: 0.1 }, { f: 523, d: 0.1 },
+                // bar 7
+                { f: 494, d: 0.2 }, { f: 494, d: 0.1 }, { f: 523, d: 0.1 }, { f: 587, d: 0.2 },
+                { f: 659, d: 0.2 },
+                // bar 8
+                { f: 523, d: 0.2 }, { f: 440, d: 0.2 }, { f: 440, d: 0.2 },
+                { f: 0, d: 0.2 },  // rest
+            ];
+
+            // Bass line (root notes, lower octave)
+            const BASS = [
+                { f: 165, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 110, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 123, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 165, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 147, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 165, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 123, d: 0.4 }, { f: 0, d: 0.4 },
+                { f: 110, d: 0.4 }, { f: 0, d: 0.4 },
+            ];
+
+            function getMelodyDuration() {
+                let total = 0;
+                for (let i = 0; i < MELODY.length; i++) total += MELODY[i].d;
+                return total;
+            }
+
+            function scheduleLoop() {
+                if (!musicPlaying) return;
+                const ctx = ensureContext();
+                const startTime = ctx.currentTime + 0.05; // tiny lookahead to avoid gaps
+
+                // Schedule melody
+                let t = 0;
+                for (let i = 0; i < MELODY.length; i++) {
+                    const note = MELODY[i];
+                    if (note.f > 0) {
+                        const osc = ctx.createOscillator();
+                        const env = ctx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.value = note.f;
+                        env.gain.setValueAtTime(0.35, startTime + t);
+                        env.gain.exponentialRampToValueAtTime(0.001, startTime + t + note.d - 0.02);
+                        osc.connect(env);
+                        env.connect(musicGain);
+                        osc.start(startTime + t);
+                        osc.stop(startTime + t + note.d);
+                        musicNodes.push(osc);
+                    }
+                    t += note.d;
+                }
+
+                // Schedule bass
+                const loopDur = getMelodyDuration();
+                const bassTotalDur = BASS.reduce(function (s, n) { return s + n.d; }, 0);
+                const bassRepeats = Math.ceil(loopDur / bassTotalDur);
+                let bt = 0;
+                for (let r = 0; r < bassRepeats && bt < loopDur; r++) {
+                    for (let i = 0; i < BASS.length && bt < loopDur; i++) {
+                        const note = BASS[i];
+                        if (note.f > 0) {
+                            const osc = ctx.createOscillator();
+                            const env = ctx.createGain();
+                            osc.type = 'triangle';
+                            osc.frequency.value = note.f;
+                            env.gain.setValueAtTime(0.3, startTime + bt);
+                            env.gain.exponentialRampToValueAtTime(0.001, startTime + bt + note.d - 0.02);
+                            osc.connect(env);
+                            env.connect(musicGain);
+                            osc.start(startTime + bt);
+                            osc.stop(startTime + bt + note.d);
+                            musicNodes.push(osc);
+                        }
+                        bt += note.d;
+                    }
+                }
+
+                // Schedule the next loop iteration just before this one ends
+                const loopMs = loopDur * 1000;
+                musicTimer = setTimeout(function () {
+                    // Clean up old nodes
+                    musicNodes = [];
+                    scheduleLoop();
+                }, loopMs - 50);
+            }
+
+            function startMusic() {
+                if (musicPlaying) return;
+                ensureContext();
+                musicPlaying = true;
+                scheduleLoop();
+            }
+
+            function stopMusic() {
+                musicPlaying = false;
+                if (musicTimer) {
+                    clearTimeout(musicTimer);
+                    musicTimer = null;
+                }
+                // Stop all active music oscillators
+                for (let i = 0; i < musicNodes.length; i++) {
+                    try { musicNodes[i].stop(); } catch (_e) { /* already stopped */ }
+                }
+                musicNodes = [];
+            }
+
+            function pauseMusic() {
+                if (audioCtx && audioCtx.state === 'running') {
+                    audioCtx.suspend();
+                }
+                if (musicTimer) {
+                    clearTimeout(musicTimer);
+                    musicTimer = null;
+                }
+            }
+
+            function resumeMusic() {
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                if (musicPlaying && !musicTimer) {
+                    scheduleLoop();
+                }
+            }
+
+            function toggleMute() {
+                ensureContext();
+                muted = !muted;
+                masterGain.gain.value = muted ? 0 : 1;
+                try {
+                    localStorage.setItem(MUTE_KEY, muted ? 'true' : 'false');
+                } catch (_e) { /* localStorage unavailable */ }
+                return muted;
+            }
+
+            function isMuted() {
+                return muted;
+            }
+
+            return {
+                ensureContext: ensureContext,
+                playMoveSfx: playMoveSfx,
+                playRotateSfx: playRotateSfx,
+                playLockSfx: playLockSfx,
+                playLineClearSfx: playLineClearSfx,
+                playLevelUpSfx: playLevelUpSfx,
+                playHardDropSfx: playHardDropSfx,
+                playGameOverSfx: playGameOverSfx,
+                startMusic: startMusic,
+                stopMusic: stopMusic,
+                pauseMusic: pauseMusic,
+                resumeMusic: resumeMusic,
+                toggleMute: toggleMute,
+                isMuted: isMuted,
+                getMelodyDuration: getMelodyDuration,
+                MELODY: MELODY,
+                BASS: BASS,
+                MUTE_KEY: MUTE_KEY
+            };
+        })();
+
+        // Expose SoundManager globally for UI and testing
+        window.SoundManager = SoundManager;
+
+        // ============================================================
         //  BACKGROUND ANIMATION — Enhanced Multi-Layer System
         // ============================================================
         (function () {
@@ -779,6 +1080,7 @@
             // Only spawn next piece immediately if not in clearing animation
             if (!isClearing) {
                 if (clearingRows.length === 0) {
+                    SoundManager.playLockSfx();
                     spawnNextPiece();
                 }
             }
@@ -816,6 +1118,7 @@
                 clearAnimationStart = performance.now();
                 isClearing = true;
                 clearingStartTime = performance.now();
+                SoundManager.playLineClearSfx(clearingRows.length);
             }
         }
 
@@ -824,6 +1127,7 @@
             // Sort descending so splicing doesn't shift indices
             clearingRows.sort((a, b) => b - a);
             const linesCleared = clearingRows.length;
+            const prevLevel = level;
 
             for (const row of clearingRows) {
                 board.splice(row, 1);
@@ -836,6 +1140,9 @@
                 lines += linesCleared;
                 level = Math.floor(lines / 10) + 1;
                 updateDisplay();
+                if (level > prevLevel) {
+                    SoundManager.playLevelUpSfx();
+                }
             }
 
             clearingRows = [];
@@ -853,6 +1160,7 @@
         // Complete line clear after flash animation finishes
         function completeClear() {
             const linesCleared = clearingRows.length;
+            const prevLevel = level;
 
             // Sort descending so we splice from bottom-up correctly
             clearingRows.sort((a, b) => b - a);
@@ -872,6 +1180,9 @@
                 lines += linesCleared;
                 level = Math.floor(lines / 10) + 1;
                 updateDisplay();
+                if (level > prevLevel) {
+                    SoundManager.playLevelUpSfx();
+                }
             }
 
             // Spawn next piece now that clearing is done
@@ -884,6 +1195,7 @@
         // Finish clearing: splice rows, update score, spawn next piece
         function finishClearLines() {
             const linesCleared = clearingRows.length;
+            const prevLevel = level;
 
             // Sort descending so splicing from bottom up doesn't shift indices
             clearingRows.sort((a, b) => b - a);
@@ -901,6 +1213,9 @@
             level = Math.floor(lines / 10) + 1;
 
             updateDisplay();
+            if (level > prevLevel) {
+                SoundManager.playLevelUpSfx();
+            }
 
             // Reset clearing state
             clearingRows = [];
@@ -1151,17 +1466,24 @@
                 return;
             }
 
+            if (e.key === 'm' || e.key === 'M') {
+                toggleMute();
+                return;
+            }
+
             if (!gameRunning || gamePaused || clearingRows.length > 0 || isClearing) return;
 
             switch (e.key) {
                 case 'ArrowLeft':
                     if (isValidMove(currentPiece, -1, 0)) {
                         currentPiece.x--;
+                        SoundManager.playMoveSfx();
                     }
                     break;
                 case 'ArrowRight':
                     if (isValidMove(currentPiece, 1, 0)) {
                         currentPiece.x++;
+                        SoundManager.playMoveSfx();
                     }
                     break;
                 case 'ArrowDown':
@@ -1175,10 +1497,12 @@
                     const rotatedShape = rotatePiece(currentPiece.shape);
                     if (isValidMove(currentPiece, 0, 0, rotatedShape)) {
                         currentPiece.shape = rotatedShape;
+                        SoundManager.playRotateSfx();
                     }
                     break;
                 case ' ':
                     // Hard drop
+                    SoundManager.playHardDropSfx();
                     while (isValidMove(currentPiece, 0, 1)) {
                         currentPiece.y++;
                         score += 2;
@@ -1538,6 +1862,7 @@
             document.getElementById('gameOverModal').style.display = 'none';
             document.getElementById('startBtn').style.display = 'none';
 
+            SoundManager.startMusic();
             gameLoop = requestAnimationFrame(gameStep);
         }
 
@@ -1547,7 +1872,10 @@
             gamePaused = !gamePaused;
             document.getElementById('pauseBtn').textContent = gamePaused ? 'Resume' : 'Pause';
 
-            if (!gamePaused) {
+            if (gamePaused) {
+                SoundManager.pauseMusic();
+            } else {
+                SoundManager.resumeMusic();
                 lastTime = performance.now();
                 gameLoop = requestAnimationFrame(gameStep);
             }
@@ -1560,6 +1888,7 @@
             clearAnimationStart = 0;
             isClearing = false;
             nextPiece = null;
+            SoundManager.stopMusic();
             if (gameLoop) {
                 cancelAnimationFrame(gameLoop);
             }
@@ -1581,6 +1910,8 @@
         function gameOver() {
             gameRunning = false;
             gamePaused = false;
+            SoundManager.stopMusic();
+            SoundManager.playGameOverSfx();
 
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalLines').textContent = lines;
@@ -1614,6 +1945,35 @@
             document.getElementById('gameOverModal').style.display = 'none';
             startGame();
         }
+
+        // Toggle mute state and update button label
+        function toggleMute() {
+            const isMuted = SoundManager.toggleMute();
+            const btn = document.getElementById('muteBtn');
+            if (btn) {
+                btn.textContent = isMuted ? 'Unmute' : 'Mute';
+                if (isMuted) {
+                    btn.classList.add('muted');
+                } else {
+                    btn.classList.remove('muted');
+                }
+            }
+        }
+
+        // Initialize mute button state from localStorage on load
+        (function initMuteButton() {
+            var isMuted = false;
+            try {
+                isMuted = localStorage.getItem(SoundManager.MUTE_KEY) === 'true';
+            } catch (_e) { /* localStorage unavailable */ }
+            var btn = document.getElementById('muteBtn');
+            if (btn) {
+                btn.textContent = isMuted ? 'Unmute' : 'Mute';
+                if (isMuted) {
+                    btn.classList.add('muted');
+                }
+            }
+        })();
 
         // Initialize display
         updateDisplay();
