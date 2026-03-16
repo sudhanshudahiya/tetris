@@ -293,6 +293,24 @@
             box-shadow: 0 0 25px rgba(255, 159, 0, 0.6);
         }
 
+        .mute-btn {
+            background: linear-gradient(135deg, #6c5ce7, #4a3cb5);
+            color: white;
+            box-shadow: 0 0 15px rgba(108, 92, 231, 0.4);
+            border: 1px solid rgba(108, 92, 231, 0.4);
+        }
+
+        .mute-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(108, 92, 231, 0.6);
+        }
+
+        .mute-btn.muted {
+            background: linear-gradient(135deg, #636e72, #4a5256);
+            box-shadow: 0 0 15px rgba(99, 110, 114, 0.4);
+            border: 1px solid rgba(99, 110, 114, 0.4);
+        }
+
         .game-over {
             position: absolute;
             top: 50%;
@@ -561,6 +579,7 @@
                     <div class="control-item"><kbd>↑</kbd> Rotate</div>
                     <div class="control-item"><kbd>Space</kbd> Hard Drop</div>
                     <div class="control-item"><kbd>P</kbd> Pause</div>
+                    <div class="control-item"><kbd>M</kbd> Mute</div>
                 </div>
                 <div class="touch-controls">
                     <div class="control-item"><kbd>Drag ← →</kbd> Move</div>
@@ -574,6 +593,7 @@
                 <button class="game-btn start-btn" id="startBtn" onclick="startGame()">Start Game</button>
                 <button class="game-btn restart-btn" id="restartBtn" onclick="restartGame()">Restart</button>
                 <button class="game-btn pause-btn" id="pauseBtn" onclick="pauseGame()">Pause</button>
+                <button class="game-btn mute-btn" id="muteBtn" onclick="toggleMute()">Mute</button>
             </div>
 
             <div class="leaderboard-panel">
