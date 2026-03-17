@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tetris — Multiplayer Battle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #0a0a1a;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* ─── Lobby ─────────────────────────────────────────── */
+        .lobby-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 30, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .lobby-overlay.hidden { display: none; }
+
+        .lobby-card {
+            background: rgba(20, 20, 50, 0.95);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 18px;
+            padding: 40px;
+            text-align: center;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.15);
+        }
+
+        .lobby-card h1 {
+            color: #00ffff;
+            font-size: 28px;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px #00ffff;
+            margin-bottom: 8px;
+        }
+
+        .lobby-card p {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .lobby-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .lobby-btn.create {
+            background: linear-gradient(135deg, #00c96b, #00875a);
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 200, 107, 0.4);
+        }
+
+        .lobby-btn.join {
+            background: linear-gradient(135deg, #6c5ce7, #4a3cb5);
+            color: white;
+            box-shadow: 0 0 15px rgba(108, 92, 231, 0.4);
+        }
+
+        .lobby-btn.back-btn {
+            background: linear-gradient(135deg, #636e72, #4a5256);
+            color: white;
+            box-shadow: 0 0 10px rgba(99, 110, 114, 0.3);
+            font-size: 13px;
+            padding: 10px;
+        }
+
+        .lobby-btn:hover { transform: translateY(-2px); }
+
+        .room-code-display {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            color: #ffd700;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            margin: 16px 0;
+            font-family: monospace;
+        }
+
+        .room-code-input {
+            width: 200px;
+            padding: 12px;
+            font-size: 22px;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            background: rgba(0, 255, 255, 0.08);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 10px;
+            color: #00ffff;
+            outline: none;
+            font-family: monospace;
+            margin-bottom: 12px;
+        }
+
+        .room-code-input:focus {
+            border-color: #00ffff;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+        }
+
+        .status-msg {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin: 12px 0;
+            min-height: 20px;
+        }
+
+        .status-msg.error { color: #ff3d5a; }
+        .status-msg.success { color: #00c96b; }
+
+        .lobby-section { display: none; }
+        .lobby-section.active { display: block; }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 16px;
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .back-link:hover { color: #00ffff; }
+
+        /* ─── Game Area ─────────────────────────────────────── */
+        .mp-container {
+            display: none;
+            gap: 30px;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .mp-container.active {
+            display: flex;
+        }
+
+        .player-panel {
+            text-align: center;
+        }
+
+        .player-panel h2 {
+            color: #00ffff;
+            font-size: 18px;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .player-panel h2.opponent { color: #ff3d5a; }
+
+        .player-board {
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            border-radius: 8px;
+            background: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .player-board.opponent {
+            border-color: rgba(255, 61, 90, 0.5);
+            box-shadow: 0 0 20px rgba(255, 61, 90, 0.3);
+            opacity: 0.85;
+        }
+
+        .mp-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .mp-info .room-badge {
+            background: rgba(0, 255, 255, 0.08);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .mp-info .room-badge span {
+            display: block;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            color: #ffd700;
+            font-family: monospace;
+        }
+
+        .mp-score-panel {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .mp-score-panel h3 {
+            color: #ffd700;
+            font-size: 12px;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+
+        .mp-score-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin: 4px 0;
+        }
+
+        .mp-score-row span:first-child { color: rgba(255,255,255,0.6); }
+        .mp-score-row span:last-child { color: #00ffff; font-weight: bold; }
+
+        .mp-score-panel.opponent .mp-score-row span:last-child { color: #ff3d5a; }
+
+        .garbage-alert {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            font-weight: 900;
+            color: #ff3d5a;
+            text-shadow: 0 0 20px rgba(255, 61, 90, 0.8);
+            animation: garbageFlash 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes garbageFlash {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        .mp-result-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .mp-result-overlay.active { display: flex; }
+
+        .mp-result-card {
+            background: rgba(20, 20, 50, 0.95);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 18px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.2);
+        }
+
+        .mp-result-card h2 {
+            font-size: 32px;
+            letter-spacing: 4px;
+            margin-bottom: 16px;
+        }
+
+        .mp-result-card h2.win {
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+
+        .mp-result-card h2.lose {
+            color: #ff3d5a;
+            text-shadow: 0 0 20px rgba(255, 61, 90, 0.6);
+        }
+
+        .mp-result-card p {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+            margin: 8px 0;
+        }
+
+        .mp-result-card p span {
+            color: #00ffff;
+            font-weight: bold;
+        }
+
+        @media (max-width: 900px) {
+            .mp-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .player-board canvas {
+                width: 200px !important;
+                height: 400px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Lobby Overlay -->
+    <div class="lobby-overlay" id="lobbyOverlay">
+        <div class="lobby-card">
+            <h1>TETRIS BATTLE</h1>
+            <p>Two-player competitive Tetris via WebRTC</p>
+
+            <!-- Main menu -->
+            <div class="lobby-section active" id="lobbyMenu">
+                <button class="lobby-btn create" onclick="showCreateRoom()">Create Room</button>
+                <button class="lobby-btn join" onclick="showJoinRoom()">Join Room</button>
+                <a href="index.html" class="back-link">Back to Single Player</a>
+            </div>
+
+            <!-- Create room -->
+            <div class="lobby-section" id="lobbyCreate">
+                <p>Share this code with your opponent:</p>
+                <div class="room-code-display" id="roomCodeDisplay">------</div>
+                <div class="status-msg" id="createStatus">Creating room...</div>
+                <button class="lobby-btn back-btn" onclick="showMenu()">Cancel</button>
+            </div>
+
+            <!-- Join room -->
+            <div class="lobby-section" id="lobbyJoin">
+                <p>Enter the room code:</p>
+                <input type="text" class="room-code-input" id="roomCodeInput" maxlength="6" placeholder="CODE" autocomplete="off" />
+                <br>
+                <button class="lobby-btn join" onclick="doJoinRoom()">Connect</button>
+                <div class="status-msg" id="joinStatus"></div>
+                <button class="lobby-btn back-btn" onclick="showMenu()">Back</button>
+            </div>
+
+            <!-- Waiting for opponent ready -->
+            <div class="lobby-section" id="lobbyWaiting">
+                <p>Connected! Waiting for both players to ready up...</p>
+                <div class="status-msg success" id="waitingStatus">Opponent connected!</div>
+                <button class="lobby-btn create" id="readyBtn" onclick="doReady()">Ready!</button>
+                <div class="status-msg" id="readyStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Container (dual boards) -->
+    <div class="mp-container" id="mpContainer">
+        <div class="player-panel">
+            <h2>YOU</h2>
+            <div class="player-board" style="position:relative;">
+                <canvas id="mpGameCanvas" width="300" height="600"></canvas>
+            </div>
+            <div class="mp-score-panel" style="margin-top: 10px;">
+                <h3>YOUR SCORE</h3>
+                <div class="mp-score-row"><span>Score:</span><span id="mpScore">0</span></div>
+                <div class="mp-score-row"><span>Lines:</span><span id="mpLines">0</span></div>
+                <div class="mp-score-row"><span>Level:</span><span id="mpLevel">1</span></div>
+            </div>
+        </div>
+
+        <div class="mp-info">
+            <div class="room-badge">
+                ROOM<br>
+                <span id="mpRoomCode">------</span>
+            </div>
+            <div style="font-size:24px; color:#ffd700;">VS</div>
+            <div class="mp-score-panel opponent">
+                <h3>OPPONENT</h3>
+                <div class="mp-score-row"><span>Score:</span><span id="oppScore">0</span></div>
+                <div class="mp-score-row"><span>Lines:</span><span id="oppLines">0</span></div>
+                <div class="mp-score-row"><span>Level:</span><span id="oppLevel">1</span></div>
+            </div>
+        </div>
+
+        <div class="player-panel">
+            <h2 class="opponent">OPPONENT</h2>
+            <div class="player-board opponent">
+                <canvas id="oppCanvas" width="300" height="600"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Result Overlay -->
+    <div class="mp-result-overlay" id="mpResultOverlay">
+        <div class="mp-result-card">
+            <h2 id="mpResultTitle">---</h2>
+            <p>Your Score: <span id="mpResultScore">0</span></p>
+            <p>Lines Cleared: <span id="mpResultLines">0</span></p>
+            <button class="lobby-btn create" onclick="returnToLobby()" style="margin-top:20px;">Play Again</button>
+            <a href="index.html" class="back-link">Back to Single Player</a>
+        </div>
+    </div>
+
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <!-- Game engine (provides window._multiplayerGame etc.) -->
+    <script src="game.js"></script>
+    <!-- Multiplayer module -->
+    <script src="multiplayer.js"></script>
+
+    <script>
+        // ── Lobby navigation ───────────────────────────────────
+        function showSection(id) {
+            document.querySelectorAll('.lobby-section').forEach(function(s) {
+                s.classList.remove('active');
+            });
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showMenu() {
+            TetrisMultiplayer.disconnect();
+            showSection('lobbyMenu');
+        }
+
+        function showCreateRoom() {
+            showSection('lobbyCreate');
+            document.getElementById('createStatus').textContent = 'Creating room...';
+            document.getElementById('createStatus').className = 'status-msg';
+
+            TetrisMultiplayer.on('connectionReady', function() {
+                document.getElementById('createStatus').textContent = 'Opponent connected!';
+                document.getElementById('createStatus').className = 'status-msg success';
+                showSection('lobbyWaiting');
+            });
+
+            TetrisMultiplayer.on('error', function(msg) {
+                document.getElementById('createStatus').textContent = msg;
+                document.getElementById('createStatus').className = 'status-msg error';
+            });
+
+            TetrisMultiplayer.createRoom().then(function(code) {
+                document.getElementById('roomCodeDisplay').textContent = code;
+                document.getElementById('createStatus').textContent = 'Waiting for opponent to join...';
+            }).catch(function(err) {
+                document.getElementById('createStatus').textContent = err.message;
+                document.getElementById('createStatus').className = 'status-msg error';
+            });
+        }
+
+        function showJoinRoom() {
+            showSection('lobbyJoin');
+            document.getElementById('joinStatus').textContent = '';
+            document.getElementById('roomCodeInput').value = '';
+            document.getElementById('roomCodeInput').focus();
+        }
+
+        function doJoinRoom() {
+            var code = document.getElementById('roomCodeInput').value.toUpperCase().trim();
+            var statusEl = document.getElementById('joinStatus');
+
+            if (!TetrisMultiplayer.isValidRoomCode(code)) {
+                statusEl.textContent = 'Invalid room code. Must be 6 characters.';
+                statusEl.className = 'status-msg error';
+                return;
+            }
+
+            statusEl.textContent = 'Connecting...';
+            statusEl.className = 'status-msg';
+
+            TetrisMultiplayer.on('connectionReady', function() {
+                statusEl.textContent = 'Connected!';
+                statusEl.className = 'status-msg success';
+                showSection('lobbyWaiting');
+            });
+
+            TetrisMultiplayer.on('error', function(msg) {
+                statusEl.textContent = msg;
+                statusEl.className = 'status-msg error';
+            });
+
+            TetrisMultiplayer.joinRoom(code).catch(function(err) {
+                statusEl.textContent = err.message;
+                statusEl.className = 'status-msg error';
+            });
+        }
+
+        function doReady() {
+            document.getElementById('readyBtn').disabled = true;
+            document.getElementById('readyBtn').textContent = 'Waiting...';
+            document.getElementById('readyStatus').textContent = 'You are ready! Waiting for opponent...';
+            TetrisMultiplayer.setReady();
+        }
+
+        // ── Match start ────────────────────────────────────────
+        TetrisMultiplayer.on('opponentReady', function() {
+            document.getElementById('readyStatus').textContent = 'Opponent is ready!';
+            document.getElementById('readyStatus').className = 'status-msg success';
+        });
+
+        TetrisMultiplayer.on('matchStart', function() {
+            startMultiplayerMatch();
+        });
+
+        function startMultiplayerMatch() {
+            // Hide lobby, show game
+            document.getElementById('lobbyOverlay').classList.add('hidden');
+            document.getElementById('mpContainer').classList.add('active');
+
+            var state = TetrisMultiplayer.getState();
+            document.getElementById('mpRoomCode').textContent = state.roomCode || '------';
+
+            // Hook up multiplayer callbacks
+            window._multiplayerOnLineClear = function(linesCleared) {
+                TetrisMultiplayer.sendGarbage(linesCleared);
+                // Also send score update
+                if (window._multiplayerGame) {
+                    TetrisMultiplayer.sendScoreUpdate(
+                        window._multiplayerGame.score,
+                        window._multiplayerGame.lines,
+                        window._multiplayerGame.level
+                    );
+                }
+            };
+
+            window._multiplayerOnGameOver = function() {
+                TetrisMultiplayer.sendGameOver();
+                showResult(false); // We lost
+            };
+
+            TetrisMultiplayer.on('garbage', function(lineCount) {
+                if (window._multiplayerGame) {
+                    window._multiplayerGame.receiveGarbage(lineCount);
+                    showGarbageAlert(lineCount);
+                }
+            });
+
+            TetrisMultiplayer.on('opponentGameOver', function() {
+                // We won! Save to leaderboard as multiplayer win
+                if (window._multiplayerGame && window._leaderboard) {
+                    window._leaderboard.saveScore(
+                        'MP-WIN',
+                        window._multiplayerGame.score,
+                        window._multiplayerGame.lines
+                    );
+                }
+                showResult(true);
+            });
+
+            TetrisMultiplayer.on('opponentScoreUpdate', function(data) {
+                document.getElementById('oppScore').textContent = data.score;
+                document.getElementById('oppLines').textContent = data.lines;
+                document.getElementById('oppLevel').textContent = data.level;
+            });
+
+            TetrisMultiplayer.on('opponentBoardState', function(boardData) {
+                drawOpponentBoard(boardData);
+            });
+
+            TetrisMultiplayer.on('connectionClosed', function() {
+                showResult(true); // Opponent disconnected = win
+            });
+
+            // Start the game
+            if (typeof startGame === 'function') {
+                startGame();
+            }
+
+            // Periodic board state sync
+            setInterval(function() {
+                if (window._multiplayerGame && window._multiplayerGame.gameRunning) {
+                    TetrisMultiplayer.sendBoardState(window._multiplayerGame.board);
+                    // Update local score display
+                    document.getElementById('mpScore').textContent = window._multiplayerGame.score;
+                    document.getElementById('mpLines').textContent = window._multiplayerGame.lines;
+                    document.getElementById('mpLevel').textContent = window._multiplayerGame.level;
+                }
+            }, 500);
+        }
+
+        // ── Garbage alert animation ────────────────────────────
+        function showGarbageAlert(count) {
+            var board = document.querySelector('.player-board');
+            var alert = document.createElement('div');
+            alert.className = 'garbage-alert';
+            alert.textContent = '+' + count + ' LINES!';
+            board.appendChild(alert);
+            setTimeout(function() { alert.remove(); }, 800);
+        }
+
+        // ── Draw opponent's board (mini preview) ───────────────
+        function drawOpponentBoard(boardData) {
+            var canvas = document.getElementById('oppCanvas');
+            if (!canvas) return;
+            var ctx = canvas.getContext('2d');
+            var blockSize = 15; // half size for opponent
+
+            // Scale canvas if needed
+            if (canvas.width !== 150) {
+                canvas.width = 150;
+                canvas.height = 300;
+                canvas.style.width = '150px';
+                canvas.style.height = '300px';
+            }
+
+            ctx.fillStyle = 'rgba(0, 0, 8, 0.95)';
+            ctx.fillRect(0, 0, 150, 300);
+
+            if (!boardData) return;
+
+            for (var row = 0; row < boardData.length && row < 20; row++) {
+                for (var col = 0; col < boardData[row].length && col < 10; col++) {
+                    if (boardData[row][col] !== 0) {
+                        var cell = boardData[row][col];
+                        var color = (cell && cell.color) ? cell.color : '#888';
+                        ctx.fillStyle = color;
+                        ctx.fillRect(col * blockSize + 1, row * blockSize + 1, blockSize - 2, blockSize - 2);
+                    }
+                }
+            }
+        }
+
+        // ── Show match result ──────────────────────────────────
+        function showResult(won) {
+            var overlay = document.getElementById('mpResultOverlay');
+            var title = document.getElementById('mpResultTitle');
+            overlay.classList.add('active');
+
+            if (won) {
+                title.textContent = 'YOU WIN!';
+                title.className = 'win';
+            } else {
+                title.textContent = 'YOU LOSE';
+                title.className = 'lose';
+            }
+
+            if (window._multiplayerGame) {
+                document.getElementById('mpResultScore').textContent = window._multiplayerGame.score;
+                document.getElementById('mpResultLines').textContent = window._multiplayerGame.lines;
+            }
+        }
+
+        function returnToLobby() {
+            TetrisMultiplayer.disconnect();
+            document.getElementById('mpResultOverlay').classList.remove('active');
+            document.getElementById('mpContainer').classList.remove('active');
+            document.getElementById('lobbyOverlay').classList.remove('hidden');
+            showSection('lobbyMenu');
+
+            // Reset game state
+            window._multiplayerOnLineClear = null;
+            window._multiplayerOnGameOver = null;
+            if (typeof restartGame === 'function') {
+                restartGame();
+            }
+        }
+
+        // Auto-uppercase room code input
+        document.getElementById('roomCodeInput').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+        });
+    </script>
+</body>
+</html>

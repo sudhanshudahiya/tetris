@@ -1184,6 +1184,10 @@
                 if (level > prevLevel) {
                     SoundManager.playLevelUpSfx();
                 }
+                // Notify multiplayer of line clear (for garbage sending)
+                if (window._multiplayerOnLineClear) {
+                    window._multiplayerOnLineClear(linesCleared);
+                }
             }
 
             // Spawn next piece now that clearing is done
@@ -1217,11 +1221,50 @@
             if (level > prevLevel) {
                 SoundManager.playLevelUpSfx();
             }
+            // Notify multiplayer of line clear (for garbage sending)
+            if (linesCleared > 0 && window._multiplayerOnLineClear) {
+                window._multiplayerOnLineClear(linesCleared);
+            }
 
             // Reset clearing state
             clearingRows = [];
             clearAnimationStart = 0;
             isClearing = false;
+        }
+
+        // Receive garbage lines from opponent (multiplayer)
+        function receiveGarbage(lineCount) {
+            if (!gameRunning || lineCount <= 0) return;
+            const gapCol = Math.floor(Math.random() * BOARD_WIDTH);
+            for (let i = 0; i < lineCount; i++) {
+                // Remove top row
+                board.shift();
+                // Add garbage row at bottom with one gap
+                const garbageRow = [];
+                for (let col = 0; col < BOARD_WIDTH; col++) {
+                    if (col === gapCol) {
+                        garbageRow.push(0);
+                    } else {
+                        garbageRow.push({ color: '#666666', glow: 'rgba(100,100,100,' });
+                    }
+                }
+                board.push(garbageRow);
+            }
+            // Check if current piece is now in an invalid position
+            if (currentPiece && !isValidMove(currentPiece, 0, 0)) {
+                // Try to push piece up
+                let pushed = false;
+                for (let offset = 1; offset <= lineCount; offset++) {
+                    if (isValidMove(currentPiece, 0, -offset)) {
+                        currentPiece.y -= offset;
+                        pushed = true;
+                        break;
+                    }
+                }
+                if (!pushed) {
+                    gameOver();
+                }
+            }
         }
 
         // Expose ghost piece logic for testing
@@ -1240,6 +1283,20 @@
             get clearAnimationStart() { return clearAnimationStart; },
             FLASH_DURATION,
             completeClear
+        };
+
+        // Expose multiplayer hooks
+        window._multiplayerGame = {
+            receiveGarbage: receiveGarbage,
+            get board() { return board; },
+            get score() { return score; },
+            get lines() { return lines; },
+            get level() { return level; },
+            get gameRunning() { return gameRunning; },
+            startGame: startGame,
+            gameOver: gameOver,
+            BOARD_WIDTH: BOARD_WIDTH,
+            BOARD_HEIGHT: BOARD_HEIGHT
         };
 
         // Draw grid lines on board
@@ -1913,6 +1970,11 @@
             gamePaused = false;
             SoundManager.stopMusic();
             SoundManager.playGameOverSfx();
+
+            // Notify multiplayer of game over
+            if (window._multiplayerOnGameOver) {
+                window._multiplayerOnGameOver();
+            }
 
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalLines').textContent = lines;
