@@ -1136,8 +1136,7 @@
             }
 
             if (linesCleared > 0) {
-                const lineValues = [0, 40, 100, 300, 1200];
-                score += lineValues[linesCleared] * level;
+                score += linesCleared * 100;
                 lines += linesCleared;
                 level = Math.floor(lines / 10) + 1;
                 updateDisplay();
@@ -1176,8 +1175,7 @@
             isClearing = false;
 
             if (linesCleared > 0) {
-                const lineValues = [0, 40, 100, 300, 1200];
-                score += lineValues[linesCleared] * level;
+                score += linesCleared * 100;
                 lines += linesCleared;
                 level = Math.floor(lines / 10) + 1;
                 updateDisplay();
@@ -1206,8 +1204,7 @@
             }
 
             // Update score
-            const lineValues = [0, 40, 100, 300, 1200];
-            score += lineValues[linesCleared] * level;
+            score += linesCleared * 100;
             lines += linesCleared;
 
             // Level up every 10 lines

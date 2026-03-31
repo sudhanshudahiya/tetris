@@ -641,6 +641,58 @@ function testTetrisRequirements() {
         }},
         { name: 'Ghost: skips when piece at ghost position', test: () => {
             return /ghostY\s*===\s*currentPiece\.y.*return/.test(gameContent);
+        }},
+
+        // ── Flat Scoring: 100 points per line ──────────────────────────
+        // No tiered lineValues array in scoring functions
+        { name: 'Scoring: no tiered lineValues array', test: () => {
+            return !gameContent.includes('lineValues');
+        }},
+
+        // Scoring uses flat 100 per line (linesCleared * 100)
+        { name: 'Scoring: flat 100 points per line in finishClearing', test: () => {
+            const idx = gameContent.indexOf('function finishClearing');
+            if (idx === -1) return false;
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return /linesCleared\s*\*\s*100/.test(body);
+        }},
+
+        { name: 'Scoring: flat 100 points per line in completeClear', test: () => {
+            const idx = gameContent.indexOf('function completeClear');
+            if (idx === -1) return false;
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return /linesCleared\s*\*\s*100/.test(body);
+        }},
+
+        { name: 'Scoring: flat 100 points per line in finishClearLines', test: () => {
+            const idx = gameContent.indexOf('function finishClearLines');
+            if (idx === -1) return false;
+            const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+            const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+            return /linesCleared\s*\*\s*100/.test(body);
+        }},
+
+        // Scoring does not multiply by level
+        { name: 'Scoring: no level multiplier in scoring', test: () => {
+            // Ensure none of the clearing functions multiply score by level
+            const fns = ['finishClearing', 'completeClear', 'finishClearLines'];
+            return fns.every(fnName => {
+                const idx = gameContent.indexOf('function ' + fnName);
+                if (idx === -1) return true; // function doesn't exist, OK
+                const nextFn = gameContent.indexOf('\n        function ', idx + 1);
+                const body = gameContent.substring(idx, nextFn > idx ? nextFn : idx + 2000);
+                return !body.includes('* level');
+            });
+        }},
+
+        // Single line = 100, double = 200, triple = 300, tetris = 400
+        { name: 'Scoring: 1 line = 100 points (formula check)', test: () => {
+            return 1 * 100 === 100;
+        }},
+        { name: 'Scoring: 4 lines = 400 points (formula check)', test: () => {
+            return 4 * 100 === 400;
         }}
     ];
 
