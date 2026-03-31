@@ -641,6 +641,27 @@ function testTetrisRequirements() {
         }},
         { name: 'Ghost: skips when piece at ghost position', test: () => {
             return /ghostY\s*===\s*currentPiece\.y.*return/.test(gameContent);
+        }},
+
+        // ── Tab Visibility Pause (Page Visibility API) ──────────────────────
+        // visibilitychange event listener registered
+        { name: 'Visibility: visibilitychange listener registered', test: () => content.includes('visibilitychange') },
+
+        // Checks document.hidden to detect tab switch
+        { name: 'Visibility: checks document.hidden', test: () => content.includes('document.hidden') },
+
+        // Only pauses when game is running and not already paused
+        { name: 'Visibility: guards on gameRunning and !gamePaused', test: () => {
+            const idx = content.indexOf('visibilitychange');
+            const block = content.substring(idx, idx + 300);
+            return block.includes('gameRunning') && block.includes('!gamePaused');
+        }},
+
+        // Calls pauseGame when tab becomes hidden
+        { name: 'Visibility: calls pauseGame on hidden', test: () => {
+            const idx = content.indexOf('visibilitychange');
+            const block = content.substring(idx, idx + 300);
+            return block.includes('pauseGame()');
         }}
     ];
 
