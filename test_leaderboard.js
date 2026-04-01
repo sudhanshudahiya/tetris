@@ -11,7 +11,66 @@ const localStorageMock = {
 };
 global.localStorage = localStorageMock;
 
-const { getLeaderboard, saveScore, isHighScore, clearLeaderboard, LEADERBOARD_KEY, MAX_LEADERBOARD_ENTRIES } = require('./game.js');
+// --- Minimal DOM mocks for game.js module evaluation ---
+const noop = () => ({});
+const mockCanvas = {
+    getContext: () => ({
+        scale: noop,
+        fillRect: noop,
+        strokeRect: noop,
+        beginPath: noop,
+        moveTo: noop,
+        lineTo: noop,
+        stroke: noop,
+        fill: noop,
+        clearRect: noop,
+        save: noop,
+        restore: noop,
+        createLinearGradient: () => ({ addColorStop: noop }),
+        createRadialGradient: () => ({ addColorStop: noop }),
+        fillText: noop,
+        measureText: () => ({ width: 0 }),
+        setLineDash: noop,
+        setTransform: noop,
+        arc: noop,
+        closePath: noop,
+        translate: noop,
+        rotate: noop,
+        drawImage: noop,
+        getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+        putImageData: noop,
+        clip: noop,
+        quadraticCurveTo: noop,
+        bezierCurveTo: noop,
+        rect: noop,
+        roundRect: noop,
+    }),
+    width: 300,
+    height: 600,
+    style: {},
+    addEventListener: noop,
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 600 }),
+};
+global.document = {
+    getElementById: (id) => {
+        if (id === 'gameCanvas' || id === 'nextPieceCanvas' || id === 'bgCanvas') return mockCanvas;
+        return { style: {}, textContent: '', innerHTML: '', value: '', focus: noop, appendChild: noop };
+    },
+    createElement: (tag) => ({ innerHTML: '', style: {}, appendChild: noop }),
+    addEventListener: noop,
+};
+global.window = {
+    devicePixelRatio: 1,
+    addEventListener: noop,
+    requestAnimationFrame: noop,
+    innerWidth: 1024,
+    innerHeight: 768,
+};
+global.requestAnimationFrame = noop;
+global.cancelAnimationFrame = noop;
+global.performance = { now: () => Date.now() };
+
+const { getLeaderboard, saveScore, isHighScore, clearLeaderboard, LEADERBOARD_KEY, MAX_LEADERBOARD_ENTRIES } = await import('./game.js');
 
 let passed = 0;
 let failed = 0;
