@@ -423,6 +423,41 @@ function testTetrisRequirements() {
         // Leaderboard exposed for testing
         { name: 'Leaderboard: state exposed for testing', test: () => content.includes('window._leaderboard') },
 
+        // ── XSS Sanitization ──────────────────────────────────────────
+        { name: 'XSS: escapeHtml function exists', test: () => content.includes('function escapeHtml') },
+        { name: 'XSS: escapeHtml escapes ampersand', test: () => content.includes("'&amp;'") },
+        { name: 'XSS: escapeHtml escapes less-than', test: () => content.includes("'&lt;'") },
+        { name: 'XSS: escapeHtml escapes greater-than', test: () => content.includes("'&gt;'") },
+        { name: 'XSS: escapeHtml escapes double quote', test: () => content.includes("'&quot;'") },
+        { name: 'XSS: escapeHtml escapes single quote', test: () => content.includes("'&#039;'") },
+        { name: 'XSS: sanitizeInitials function exists', test: () => content.includes('function sanitizeInitials') },
+        { name: 'XSS: sanitizeInitials strips non-alphanumeric', test: () => {
+            const fn = content.substring(content.indexOf('function sanitizeInitials'));
+            return fn.includes('[^A-Za-z0-9]') && fn.includes('toUpperCase');
+        }},
+        { name: 'XSS: renderLeaderboard uses escapeHtml for initials', test: () => {
+            const fn = content.substring(content.indexOf('function renderLeaderboard'));
+            return fn.includes('escapeHtml(entry.initials)');
+        }},
+        { name: 'XSS: renderLeaderboard uses escapeHtml for score', test: () => {
+            const fn = content.substring(content.indexOf('function renderLeaderboard'));
+            return fn.includes('escapeHtml(entry.score)');
+        }},
+        { name: 'XSS: renderLeaderboard uses escapeHtml for lines', test: () => {
+            const fn = content.substring(content.indexOf('function renderLeaderboard'));
+            return fn.includes('escapeHtml(entry.lines)');
+        }},
+        { name: 'XSS: saveScore uses sanitizeInitials', test: () => {
+            const fn = content.substring(content.indexOf('function saveScore'), content.indexOf('function saveScore') + 500);
+            return fn.includes('sanitizeInitials(');
+        }},
+        { name: 'XSS: submitScore uses sanitizeInitials', test: () => {
+            const fn = content.substring(content.indexOf('function submitScore'), content.indexOf('function submitScore') + 500);
+            return fn.includes('sanitizeInitials(');
+        }},
+        { name: 'XSS: escapeHtml exposed for testing', test: () => content.includes('escapeHtml') && content.includes('window._leaderboard') },
+        { name: 'XSS: sanitizeInitials exposed for testing', test: () => content.includes('sanitizeInitials') && content.includes('window._leaderboard') },
+
         // ── Delta-Time Hardening (issue a9a5ef6e) ──────────────────────────
         // First-frame guard: skip frame when lastTime === 0
         { name: 'Delta-time: first-frame guard checks lastTime === 0', test: () => content.includes('if (lastTime === 0)') },
